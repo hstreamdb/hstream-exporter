@@ -65,8 +65,18 @@ func NewStreamCollector(serverUrl string) (Collector, error) {
 		mainKey:    StreamName,
 		metricType: Counter,
 	}
+	appendRequestLatency := Metrics{
+		metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, streamSubsystem, "append_latency"),
+			"Append request latency.",
+			[]string{"server_host"}, nil,
+		),
+		reqPath:    fmt.Sprintf(requestTemplate, "server_histogram", "append_request_latency"),
+		mainKey:    ServerHistogram,
+		metricType: Summary,
+	}
 	return &StreamCollector{
-		metrics: []Metrics{appendBytes, appendRecords, appendQPS, appendTotal, appendFailed},
+		metrics: []Metrics{appendBytes, appendRecords, appendQPS, appendTotal, appendFailed, appendRequestLatency},
 		url:     serverUrl,
 	}, nil
 }

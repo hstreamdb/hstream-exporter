@@ -65,25 +65,70 @@ func ScrapeHServerMetrics(ch chan<- prometheus.Metric, metrics []Metrics, url st
 			}
 			fmt.Printf("get res %+v\n", res)
 
-			for _, metricMp := range res {
-				for k, v := range metricMp {
-					if k != metric.mainKey.String() && k != "server_host" {
-						value, err := strconv.ParseFloat(v, 64)
-						if err != nil && *errorp.Load() == nil {
-							errorp.Store(&err)
-							return
-						}
-						switch metric.metricType {
-						case Gauge:
-							ch <- prometheus.MustNewConstMetric(metric.metric, prometheus.GaugeValue, value, metricMp[metric.mainKey.String()], metricMp["server_host"])
-						case Counter:
-							ch <- prometheus.MustNewConstMetric(metric.metric, prometheus.CounterValue, value, metricMp[metric.mainKey.String()], metricMp["server_host"])
-						}
-					}
-				}
+			switch metric.metricType {
+			case Summary:
+				err = handleSummary(metric, res, ch)
+			default:
+				err = handleCounterAndGauge(metric, res, ch)
+			}
+
+			if err != nil && *errorp.Load() == nil {
+				errorp.Store(&err)
+				return
 			}
 		}(m)
 	}
 	wg.Wait()
 	return firstErr
+}
+
+func handleSummary(metric Metrics, res []map[string]string, ch chan<- prometheus.Metric) error {
+	var err error
+	parse := func(input string) float64 {
+		if err != nil {
+			return 0
+		}
+		value, e := strconv.ParseFloat(input, 64)
+		if e != nil {
+			err = e
+			return 0
+		}
+		return value
+	}
+
+	for _, mp := range res {
+		p50 := parse(mp["p50"])
+		p95 := parse(mp["p95"])
+		p99 := parse(mp["p99"])
+		if err != nil {
+			return err
+		}
+
+		summary, err := prometheus.NewConstSummary(metric.metric, 0, 0, map[float64]float64{0.5: p50, 0.95: p95, 0.99: p99}, mp["server_host"])
+		if err != nil {
+			return fmt.Errorf("create summary error: %s", err.Error())
+		}
+		ch <- summary
+	}
+	return nil
+}
+
+func handleCounterAndGauge(metric Metrics, res []map[string]string, ch chan<- prometheus.Metric) error {
+	for _, metricMp := range res {
+		for k, v := range metricMp {
+			if k != metric.mainKey.String() && k != "server_host" {
+				value, err := strconv.ParseFloat(v, 64)
+				if err != nil {
+					return err
+				}
+				switch metric.metricType {
+				case Gauge:
+					ch <- prometheus.MustNewConstMetric(metric.metric, prometheus.GaugeValue, value, metricMp[metric.mainKey.String()], metricMp["server_host"])
+				case Counter:
+					ch <- prometheus.MustNewConstMetric(metric.metric, prometheus.CounterValue, value, metricMp[metric.mainKey.String()], metricMp["server_host"])
+				}
+			}
+		}
+	}
+	return nil
 }
