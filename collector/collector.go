@@ -1,8 +1,9 @@
 package collector
 
 import (
-	"fmt"
+	"github.com/hstreamdb/hstream-exporter/util"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 	"sync"
 )
 
@@ -97,7 +98,6 @@ func (h *HStreamCollector) Collect(ch chan<- prometheus.Metric) {
 	wg.Add(len(h.Collectors))
 	for name, c := range h.Collectors {
 		go func(name string, c Collector) {
-			fmt.Printf("collect: %s", name)
 			execute(name, c, ch)
 			wg.Done()
 		}(name, c)
@@ -108,7 +108,7 @@ func (h *HStreamCollector) Collect(ch chan<- prometheus.Metric) {
 func execute(name string, c Collector, ch chan<- prometheus.Metric) {
 	success := float64(1)
 	if err := c.Collect(ch); err != nil {
-		fmt.Printf("collector %s error: %s", name, err.Error())
+		util.Logger().Error("collector error", zap.String("name", name), zap.String("error", err.Error()))
 		success = 0
 	}
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)

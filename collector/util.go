@@ -3,8 +3,10 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hstreamdb/hstream-exporter/util"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"path"
@@ -22,26 +24,26 @@ type respTab struct {
 func DoRequest(url string) ([]map[string]string, error) {
 	resp, err := http.Get("http://" + url)
 	if err != nil {
-		fmt.Printf("request error: %s\n", err.Error())
-		return nil, fmt.Errorf("do request %s error: %s", url, err.Error())
+		return nil, errors.WithMessage(err, fmt.Sprintf("request %s error", url))
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if resp.StatusCode != 200 {
+		util.Logger().Error("unexpected response status code", zap.String("url", url), zap.Int("code", resp.StatusCode), zap.String("body", string(body)))
 		return nil, errors.New(url + "\n" + resp.Status + "\n" + string(body))
 	}
 
 	var tabObj respTab
 	if err = json.Unmarshal(body, &tabObj); err != nil {
-		return nil, fmt.Errorf("parse response error for request %s: %s", url, err.Error())
+		return nil, errors.WithMessage(err, fmt.Sprintf("parse response error for request %s", url))
 	}
 
 	var res []map[string]string
 	for _, x := range tabObj.Value {
 		var xMap map[string]string
 		if err = json.Unmarshal(x, &xMap); err != nil {
-			return nil, fmt.Errorf("parse response error for request %s: %s", url, err.Error())
+			return nil, errors.WithMessage(err, fmt.Sprintf("parse tabObj Value error, request %s", url))
 		}
 		res = append(res, xMap)
 	}
@@ -58,12 +60,13 @@ func ScrapeHServerMetrics(ch chan<- prometheus.Metric, metrics []Metrics, url st
 	for _, m := range metrics {
 		go func(metric Metrics) {
 			defer wg.Done()
-			res, err := DoRequest(path.Join(url, metric.reqPath))
+			resourcePath := path.Join(url, metric.reqPath)
+			res, err := DoRequest(resourcePath)
 			if err != nil && *errorp.Load() == nil {
 				errorp.Store(&err)
 				return
 			}
-			fmt.Printf("get res %+v\n", res)
+			util.Logger().Debug("get response for metrics", zap.String("metrics path", resourcePath), zap.String("res", fmt.Sprintf("%+v", res)))
 
 			switch metric.metricType {
 			case Summary:
@@ -106,7 +109,7 @@ func handleSummary(metric Metrics, res []map[string]string, ch chan<- prometheus
 
 		summary, err := prometheus.NewConstSummary(metric.metric, 0, 0, map[float64]float64{0.5: p50, 0.95: p95, 0.99: p99}, mp["server_host"])
 		if err != nil {
-			return fmt.Errorf("create summary error: %s", err.Error())
+			return errors.WithMessage(err, "create summary error")
 		}
 		ch <- summary
 	}
