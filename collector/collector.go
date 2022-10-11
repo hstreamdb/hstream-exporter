@@ -8,7 +8,7 @@ import (
 
 const (
 	namespace       = "hstream_exporter"
-	requestTemplate = "v1/cluster/stats?category=%s&metrics=%s&interval=1s"
+	requestTemplate = "v1/cluster/stats?category=%s&metrics=%s&interval=5s"
 )
 
 var (
@@ -130,7 +130,7 @@ func (k KeyType) String() string {
 	case SubscriptionId:
 		return "subscription_id"
 	case ServerHistogram:
-		return "server_histogram"
+		return "server_host"
 	case Unknown:
 		return "Unknown"
 	}
@@ -142,4 +142,5 @@ type MetricType int
 const (
 	Gauge MetricType = iota
 	Counter
+	Summary
 )
