@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	namespace       = "hstream_exporter"
-	requestTemplate = "v1/cluster/stats?category=%s&metrics=%s&interval=5s"
+	namespace = "hstream_exporter"
 )
 
 var (
@@ -31,7 +30,7 @@ type Collector interface {
 type Metrics struct {
 	metric *prometheus.Desc
 
-	reqPath    string
+	reqArgs    []string
 	mainKey    KeyType
 	metricType MetricType
 }
