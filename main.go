@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	httpServerAddr         = flag.String("addr", "127.0.0.1:8080", "Http server addr")
+	httpServerAddr         = flag.String("addr", "127.0.0.1:6570", "HStream server addr")
 	listenAddr             = flag.String("listen-addr", ":9200", "Port on which to expose metrics")
 	disableExporterMetrics = flag.Bool("disable-exporter-metrics", false, "Exclude metrics about the exporter itself")
 	maxScrapeRequest       = flag.Int("max-request", 40, "Maximum number of parallel scrape requests. Use 0 to disable.")

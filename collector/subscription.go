@@ -1,7 +1,8 @@
 package collector
 
 import (
-	"fmt"
+	"github.com/hstreamdb/hstream-exporter/util"
+	"github.com/hstreamdb/hstreamdb-go/hstream"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -10,8 +11,11 @@ const (
 )
 
 type SubCollector struct {
-	metrics []Metrics
-	url     string
+	metrics    []Metrics
+	initUrl    string
+	initClient *hstream.HStreamClient
+	serverUrls []string
+	clients    []*hstream.HStreamClient
 }
 
 func NewSubCollector(serverUrl string) (Collector, error) {
@@ -21,7 +25,7 @@ func NewSubCollector(serverUrl string) (Collector, error) {
 			"Bytes send by each subscription in seconds.",
 			[]string{"subId", "server_host"}, nil,
 		),
-		reqPath:    fmt.Sprintf(requestTemplate, "subscription", "send_out_bytes"),
+		reqArgs:    []string{"subscription", "send_out_bytes"},
 		mainKey:    SubscriptionId,
 		metricType: Gauge,
 	}
@@ -31,7 +35,7 @@ func NewSubCollector(serverUrl string) (Collector, error) {
 			"Rate of requests received from clients per subscription.",
 			[]string{"subId", "server_host"}, nil,
 		),
-		reqPath:    fmt.Sprintf(requestTemplate, "subscription", "request_messages"),
+		reqArgs:    []string{"subscription", "request_messages"},
 		mainKey:    SubscriptionId,
 		metricType: Gauge,
 	}
@@ -41,7 +45,7 @@ func NewSubCollector(serverUrl string) (Collector, error) {
 			"Rate of response sent to clients per subscription.",
 			[]string{"subId", "server_host"}, nil,
 		),
-		reqPath:    fmt.Sprintf(requestTemplate, "subscription", "response_messages"),
+		reqArgs:    []string{"subscription", "response_messages"},
 		mainKey:    SubscriptionId,
 		metricType: Gauge,
 	}
@@ -51,7 +55,7 @@ func NewSubCollector(serverUrl string) (Collector, error) {
 			"Rate of acknowledgements received per subscription.",
 			[]string{"subId", "server_host"}, nil,
 		),
-		reqPath:    fmt.Sprintf(requestTemplate, "subscription", "acks"),
+		reqArgs:    []string{"subscription", "acks"},
 		mainKey:    SubscriptionId,
 		metricType: Gauge,
 	}
@@ -61,13 +65,35 @@ func NewSubCollector(serverUrl string) (Collector, error) {
 			"Total number of resent records per subscription.",
 			[]string{"subId", "server_host"}, nil,
 		),
-		reqPath:    fmt.Sprintf(requestTemplate, "subscription_counter", "resend_records"),
+		reqArgs:    []string{"subscription_counter", "resend_records"},
 		mainKey:    SubscriptionId,
 		metricType: Gauge,
 	}
+
+	client, err := hstream.NewHStreamClient(serverUrl)
+	if err != nil {
+		return nil, err
+	}
+	serverUrls, err := client.Client.GetServerInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	clients := make([]*hstream.HStreamClient, len(serverUrls))
+	for _, serverUrl := range serverUrls {
+		if client, err := hstream.NewHStreamClient(serverUrl); err == nil {
+			clients = append(clients, client)
+		} else {
+			util.Logger().Warn("connect to server " + serverUrl + " error, " + err.Error())
+		}
+	}
+
 	return &SubCollector{
-		metrics: []Metrics{sendBytes, msgRequestRate, msgResponseRate, acks, resendRate},
-		url:     serverUrl,
+		metrics:    []Metrics{sendBytes, msgRequestRate, msgResponseRate, acks, resendRate},
+		initUrl:    serverUrl,
+		initClient: client,
+		serverUrls: serverUrls,
+		clients:    clients,
 	}, nil
 }
 
@@ -76,5 +102,5 @@ func (s *SubCollector) CollectorName() string {
 }
 
 func (s *SubCollector) Collect(ch chan<- prometheus.Metric) error {
-	return ScrapeHServerMetrics(ch, s.metrics, s.url)
+	return ScrapeHServerMetrics(ch, s.metrics, s.serverUrls)
 }
