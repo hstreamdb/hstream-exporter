@@ -1,9 +1,9 @@
 package collector
 
 import (
-	"github.com/hstreamdb/hstream-exporter/util"
+	"github.com/hstreamdb/hstreamdb-go/hstream"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/zap"
 	"sync"
 )
 
@@ -13,8 +13,14 @@ const (
 
 var (
 	scrapeSuccessDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "scrape", "target_up"),
-		"hstream_exporter: Whether a collector for hstream server succeeded.",
+		prometheus.BuildFQName(namespace, "scrape", "success_scrape_count"),
+		"hstream_exporter: Number of times the target state was successfully scraped",
+		[]string{"collector"},
+		nil,
+	)
+	scrapeFailedDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "scrape", "failed_scrape_count"),
+		"hstream_exporter: Number of times the target state was failed scraped",
 		[]string{"collector"},
 		nil,
 	)
@@ -24,15 +30,13 @@ var (
 type Collector interface {
 	CollectorName() string
 	// Collect Get new metrics and expose them via prometheus registry.
-	Collect(ch chan<- prometheus.Metric) error
+	Collect(ch chan<- prometheus.Metric) (successCnt uint32, failedCnt uint32)
 }
 
 type Metrics struct {
-	metric *prometheus.Desc
-
-	reqArgs    []string
-	mainKey    KeyType
-	metricType MetricType
+	metric        *prometheus.Desc
+	hstreamMetric HStreamMetrics
+	metricType    MetricType
 }
 
 // HStreamCollector implements the prometheus.Collector interface
@@ -40,19 +44,21 @@ type HStreamCollector struct {
 	Collectors map[string]Collector
 }
 
-type newCollectorFunc func(string) (Collector, error)
+type newCollectorFunc func(*hstream.HStreamClient, []string) (Collector, error)
 
 // collectorRegister is a collector builder which register all needed metrics,
 // then build a HStreamCollector instance.
 type collectorRegister struct {
-	url        string
+	urls       []string
+	client     *hstream.HStreamClient
 	collectors map[string]Collector
 	err        error
 }
 
-func newRegister(url string) *collectorRegister {
+func newRegister(client *hstream.HStreamClient, urls []string) *collectorRegister {
 	return &collectorRegister{
-		url:        url,
+		urls:       urls,
+		client:     client,
 		collectors: make(map[string]Collector),
 	}
 }
@@ -62,7 +68,7 @@ func (r *collectorRegister) register(f newCollectorFunc) {
 		return
 	}
 
-	collector, err := f(r.url)
+	collector, err := f(r.client, r.urls)
 	if err != nil {
 		r.err = err
 		return
@@ -78,7 +84,17 @@ func (r *collectorRegister) finish() (*HStreamCollector, error) {
 }
 
 func NewHStreamCollector(serverUrl string) (*HStreamCollector, error) {
-	rg := newRegister(serverUrl)
+	client, err := hstream.NewHStreamClient(serverUrl)
+	if err != nil {
+		return nil, errors.WithMessage(err, "Create HStream client error")
+	}
+
+	urls, err := client.GetServerInfo()
+	if err != nil {
+		return nil, errors.WithMessage(err, "Get server info error")
+	}
+
+	rg := newRegister(client, urls)
 	for _, fc := range []newCollectorFunc{NewStreamCollector, NewSubCollector} {
 		rg.register(fc)
 	}
@@ -89,6 +105,7 @@ func NewHStreamCollector(serverUrl string) (*HStreamCollector, error) {
 // Describe implement prometheus.Collector interface
 func (h *HStreamCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- scrapeSuccessDesc
+	ch <- scrapeFailedDesc
 }
 
 // Collect implement prometheus.Collector interface
@@ -105,41 +122,7 @@ func (h *HStreamCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func execute(name string, c Collector, ch chan<- prometheus.Metric) {
-	success := float64(1)
-	if err := c.Collect(ch); err != nil {
-		util.Logger().Error("collector error", zap.String("name", name), zap.String("error", err.Error()))
-		success = 0
-	}
-	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
+	success, faild := c.Collect(ch)
+	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, float64(success), name)
+	ch <- prometheus.MustNewConstMetric(scrapeFailedDesc, prometheus.GaugeValue, float64(faild), name)
 }
-
-type KeyType int
-
-const (
-	StreamName KeyType = iota
-	SubscriptionId
-	ServerHistogram
-	Unknown
-)
-
-func (k KeyType) String() string {
-	switch k {
-	case StreamName:
-		return "stream_name"
-	case SubscriptionId:
-		return "subscription_id"
-	case ServerHistogram:
-		return "server_host"
-	case Unknown:
-		return "Unknown"
-	}
-	return ""
-}
-
-type MetricType int
-
-const (
-	Gauge MetricType = iota
-	Counter
-	Summary
-)

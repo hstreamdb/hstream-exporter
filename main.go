@@ -8,12 +8,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
 	"net/http"
 	"os"
 )
 
 var (
-	httpServerAddr         = flag.String("addr", "127.0.0.1:6570", "HStream server addr")
+	hServerAddr            = flag.String("addr", "127.0.0.1:6570", "HStream server addr")
 	listenAddr             = flag.String("listen-addr", ":9200", "Port on which to expose metrics")
 	disableExporterMetrics = flag.Bool("disable-exporter-metrics", false, "Exclude metrics about the exporter itself")
 	maxScrapeRequest       = flag.Int("max-request", 40, "Maximum number of parallel scrape requests. Use 0 to disable.")
@@ -33,6 +34,7 @@ func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int) 
 	if err != nil {
 		return nil, err
 	}
+	util.Logger().Info("create connection with hstream server", zap.String("url", serverUrl))
 
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(exporter)
@@ -58,7 +60,7 @@ func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int) 
 func main() {
 	flag.Parse()
 	util.InitLogger(*logLevel)
-	handler, err := newHandler(*httpServerAddr, !(*disableExporterMetrics), *maxScrapeRequest)
+	handler, err := newHandler(*hServerAddr, !(*disableExporterMetrics), *maxScrapeRequest)
 	if err != nil {
 		panic(fmt.Sprintf("create http handler err: %s", err.Error()))
 	}
