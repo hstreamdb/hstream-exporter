@@ -46,7 +46,7 @@ func ScrapeHServerMetrics(ch chan<- prometheus.Metric, client *hstream.HStreamCl
 				zap.String("res", fmt.Sprintf("%+v", res)))
 
 			switch metric.metricType {
-			case Histogram:
+			case Summary:
 				if err = handleSummary(metric, res, ch); err != nil {
 					util.Logger().Error("create prometheus metric error", zap.String("metric", metric.hstreamMetric.GetMetricName()),
 						zap.Error(err))
@@ -149,11 +149,11 @@ func parseResponse(resp string) (*respTable, error) {
 
 func handleSummary(metric Metrics, res []map[string]string, ch chan<- prometheus.Metric) error {
 	var err error
-	parse := func(input string) uint64 {
+	parse := func(input string) float64 {
 		if err != nil {
 			return 0
 		}
-		value, e := strconv.ParseUint(input, 10, 64)
+		value, e := strconv.ParseFloat(input, 64)
 		if e != nil {
 			err = e
 			return 0
@@ -169,12 +169,12 @@ func handleSummary(metric Metrics, res []map[string]string, ch chan<- prometheus
 			return err
 		}
 
-		hist, err := prometheus.NewConstHistogram(metric.metric, 0, 0,
-			map[float64]uint64{0.5: p50, 0.95: p95, 0.99: p99}, mp["server_host"])
+		summary, err := prometheus.NewConstSummary(metric.metric, 0, 0,
+			map[float64]float64{0.5: p50, 0.95: p95, 0.99: p99}, mp["server_host"])
 		if err != nil {
-			return errors.WithMessage(err, "create histogram error")
+			return errors.WithMessage(err, "create summary error")
 		}
-		ch <- hist
+		ch <- summary
 	}
 	return nil
 }
