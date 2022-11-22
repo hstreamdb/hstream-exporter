@@ -67,8 +67,8 @@ func NewStreamCollector(client *hstream.HStreamClient, serverUrls []string) (Col
 			"Append request latency.",
 			[]string{"server_host"}, nil,
 		),
-		hstreamMetric: NewServerHistogramMetrics("append_request_latency", ServerHistogram),
-		metricType:    Histogram,
+		hstreamMetric: NewServerHistogramMetrics("append_request_latency", ServerSummary),
+		metricType:    Summary,
 	}
 
 	return &StreamCollector{
