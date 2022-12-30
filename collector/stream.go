@@ -19,30 +19,30 @@ func NewStreamCollector(client *hstream.HStreamClient, serverUrls []string) (Col
 	appendBytes := Metrics{
 		metric: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, streamSubsystem, "append_in_bytes"),
-			"Successfully written bytes to the stream in seconds.",
+			"Successfully written bytes to the stream.",
 			[]string{"stream", "server_host"}, nil,
 		),
-		hstreamMetric: NewStreamMetrics("append_in_bytes", StreamName),
-		metricType:    Gauge,
+		hstreamMetric: NewStreamCounterMetrics("append_in_bytes", StreamName),
+		metricType:    Counter,
 	}
 	appendRecords := Metrics{
 		metric: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, streamSubsystem, "append_in_records"),
-			"Successfully written records to the stream in seconds.",
+			"Successfully written records to the stream.",
 			[]string{"stream", "server_host"}, nil,
 		),
-		hstreamMetric: NewStreamMetrics("append_in_records", StreamName),
-		metricType:    Gauge,
+		hstreamMetric: NewStreamCounterMetrics("append_in_records", StreamName),
+		metricType:    Counter,
 	}
-	appendQPS := Metrics{
-		metric: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, streamSubsystem, "append_qps"),
-			"Rate of append requests received per stream.",
-			[]string{"stream", "server_host"}, nil,
-		),
-		hstreamMetric: NewStreamMetrics("append_in_requests", StreamName),
-		metricType:    Gauge,
-	}
+	//appendQPS := Metrics{
+	//	metric: prometheus.NewDesc(
+	//		prometheus.BuildFQName(namespace, streamSubsystem, "append_qps"),
+	//		"Rate of append requests received per stream.",
+	//		[]string{"stream", "server_host"}, nil,
+	//	),
+	//	hstreamMetric: NewStreamCounterMetrics("append_in_requests", StreamName),
+	//	metricType:    Counter,
+	//}
 	appendTotal := Metrics{
 		metric: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, streamSubsystem, "append_total"),
@@ -50,7 +50,7 @@ func NewStreamCollector(client *hstream.HStreamClient, serverUrls []string) (Col
 			[]string{"stream", "server_host"}, nil,
 		),
 		hstreamMetric: NewStreamCounterMetrics("append_total", StreamName),
-		metricType:    Gauge,
+		metricType:    Counter,
 	}
 	appendFailed := Metrics{
 		metric: prometheus.NewDesc(
@@ -59,7 +59,7 @@ func NewStreamCollector(client *hstream.HStreamClient, serverUrls []string) (Col
 			[]string{"stream", "server_host"}, nil,
 		),
 		hstreamMetric: NewStreamCounterMetrics("append_failed", StreamName),
-		metricType:    Gauge,
+		metricType:    Counter,
 	}
 	appendRequestLatency := Metrics{
 		metric: prometheus.NewDesc(
@@ -73,7 +73,7 @@ func NewStreamCollector(client *hstream.HStreamClient, serverUrls []string) (Col
 
 	return &StreamCollector{
 		client:     client,
-		metrics:    []Metrics{appendBytes, appendRecords, appendQPS, appendTotal, appendFailed, appendRequestLatency},
+		metrics:    []Metrics{appendBytes, appendRecords, appendTotal, appendFailed, appendRequestLatency},
 		serverUrls: serverUrls,
 	}, nil
 }

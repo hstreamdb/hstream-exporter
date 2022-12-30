@@ -19,38 +19,47 @@ func NewSubCollector(client *hstream.HStreamClient, serverUrls []string) (Collec
 	sendBytes := Metrics{
 		metric: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, subSubsystem, "send_bytes"),
-			"Bytes send by each subscription in seconds.",
+			"Bytes send by each subscription.",
 			[]string{"subId", "server_host"}, nil,
 		),
-		hstreamMetric: NewSubscriptionMetrics("send_out_bytes", SubscriptionId),
-		metricType:    Gauge,
+		hstreamMetric: NewSubscriptionCounterMetrics("send_out_bytes", SubscriptionId),
+		metricType:    Counter,
+	}
+	sendRecords := Metrics{
+		metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subSubsystem, "send_records"),
+			"Records send by each subscription.",
+			[]string{"subId", "server_host"}, nil,
+		),
+		hstreamMetric: NewSubscriptionCounterMetrics("send_out_records", SubscriptionId),
+		metricType:    Counter,
 	}
 	msgRequestRate := Metrics{
 		metric: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, subSubsystem, "request_messages"),
-			"Rate of requests received from clients per subscription.",
+			"Requests received from clients per subscription.",
 			[]string{"subId", "server_host"}, nil,
 		),
-		hstreamMetric: NewSubscriptionMetrics("request_messages", SubscriptionId),
-		metricType:    Gauge,
+		hstreamMetric: NewSubscriptionCounterMetrics("request_messages", SubscriptionId),
+		metricType:    Counter,
 	}
 	msgResponseRate := Metrics{
 		metric: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, subSubsystem, "response_messages"),
-			"Rate of response sent to clients per subscription.",
+			"Response sent to clients per subscription.",
 			[]string{"subId", "server_host"}, nil,
 		),
-		hstreamMetric: NewSubscriptionMetrics("response_messages", SubscriptionId),
-		metricType:    Gauge,
+		hstreamMetric: NewSubscriptionCounterMetrics("response_messages", SubscriptionId),
+		metricType:    Counter,
 	}
 	acks := Metrics{
 		metric: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, subSubsystem, "acks"),
-			"Rate of acknowledgements received per subscription.",
+			"Acknowledgements received per subscription.",
 			[]string{"subId", "server_host"}, nil,
 		),
-		hstreamMetric: NewSubscriptionMetrics("acks", SubscriptionId),
-		metricType:    Gauge,
+		hstreamMetric: NewSubscriptionCounterMetrics("acks", SubscriptionId),
+		metricType:    Counter,
 	}
 	resendRate := Metrics{
 		metric: prometheus.NewDesc(
@@ -59,12 +68,12 @@ func NewSubCollector(client *hstream.HStreamClient, serverUrls []string) (Collec
 			[]string{"subId", "server_host"}, nil,
 		),
 		hstreamMetric: NewSubscriptionCounterMetrics("resend_records", SubscriptionId),
-		metricType:    Gauge,
+		metricType:    Counter,
 	}
 
 	return &SubCollector{
 		client:     client,
-		metrics:    []Metrics{sendBytes, msgRequestRate, msgResponseRate, acks, resendRate},
+		metrics:    []Metrics{sendBytes, sendRecords, msgRequestRate, msgResponseRate, acks, resendRate},
 		serverUrls: serverUrls,
 	}, nil
 }
