@@ -34,29 +34,24 @@ func ScrapeHServerMetrics(ch chan<- prometheus.Metric, client *hstream.HStreamCl
 	for _, m := range metrics {
 		go func(metric Metrics) {
 			defer wg.Done()
-			res, err := scrape(client, serverUrls, metric)
-			if err != nil {
-				util.Logger().Error("scrape metrics error", zap.String("metric", metric.hstreamMetric.GetMetricName()))
-				atomic.AddUint32(&failedScrape, 1)
-				return
-			}
-			util.Logger().Debug("get response for metrics",
-				zap.String("server urls", strings.Join(serverUrls, " ")),
-				zap.String("metric", metric.hstreamMetric.GetMetricName()),
-				zap.String("res", fmt.Sprintf("%+v", res)))
+			switch metric.hstreamMetric.(type) {
+			case StreamCounterMetrics, SubscriptionCounterMetrics:
+				if metric.metricType == Counter {
+					if !scrapeV2(metric, client, serverUrls, ch) {
+						atomic.AddUint32(&failedScrape, 1)
+						return
+					}
 
-			switch metric.metricType {
-			case Summary:
-				if err = handleSummary(metric, res, ch); err != nil {
-					util.Logger().Error("create prometheus metric error", zap.String("metric", metric.hstreamMetric.GetMetricName()),
-						zap.Error(err))
-					atomic.AddUint32(&failedScrape, 1)
+				} else {
+					if !scrapeV1(metric, client, serverUrls, ch) {
+						atomic.AddUint32(&failedScrape, 1)
+						return
+					}
 				}
 			default:
-				if err = handleCounterAndGauge(metric, res, ch); err != nil {
-					util.Logger().Error("create prometheus metric error", zap.String("metric", metric.hstreamMetric.GetMetricName()),
-						zap.Error(err))
+				if !scrapeV1(metric, client, serverUrls, ch) {
 					atomic.AddUint32(&failedScrape, 1)
+					return
 				}
 			}
 			atomic.AddUint32(&successScrape, 1)
@@ -64,6 +59,79 @@ func ScrapeHServerMetrics(ch chan<- prometheus.Metric, client *hstream.HStreamCl
 	}
 	wg.Wait()
 	return
+}
+
+func scrapeV2(metric Metrics, client *hstream.HStreamClient, serverUrls []string, ch chan<- prometheus.Metric) bool {
+	wg := sync.WaitGroup{}
+	wg.Add(len(serverUrls))
+	atLeastOneSucc := atomic.Bool{}
+
+	for _, url := range serverUrls {
+		go func(addr string) {
+			defer wg.Done()
+			statsType := metric.hstreamMetric.GetCounterStatsType()
+			var (
+				resp map[string]int64
+				err  error
+			)
+			switch statsType.(type) {
+			case hstream.StreamStatsType:
+				streamStats := statsType.(hstream.StreamStatsType)
+				resp, err = client.GetStreamStatsRequest(addr, streamStats)
+				if err != nil {
+					util.Logger().Error("send stream stats request to HStream server error",
+						zap.String("stat type", streamStats.String()),
+						zap.String("url", addr), zap.Error(err))
+					return
+				}
+			case hstream.SubscriptionStatsType:
+				subStats := statsType.(hstream.SubscriptionStatsType)
+				resp, err = client.GetSubscriptionStatsRequest(addr, subStats)
+				if err != nil {
+					util.Logger().Error("send subscription stats request to HStream server error",
+						zap.String("stat type", subStats.String()),
+						zap.String("url", addr), zap.Error(err))
+					return
+				}
+			}
+
+			for k, v := range resp {
+				ch <- prometheus.MustNewConstMetric(metric.metric, prometheus.CounterValue, float64(v), k, addr)
+			}
+			atLeastOneSucc.CompareAndSwap(false, true)
+		}(url)
+	}
+	wg.Wait()
+	return atLeastOneSucc.Load()
+}
+
+func scrapeV1(metric Metrics, client *hstream.HStreamClient, serverUrls []string, ch chan<- prometheus.Metric) bool {
+	res, err := scrape(client, serverUrls, metric)
+	if err != nil {
+		util.Logger().Error("scrape metrics error", zap.String("metric", metric.hstreamMetric.GetMetricName()))
+		return false
+	}
+
+	util.Logger().Debug("get response for metrics",
+		zap.String("server urls", strings.Join(serverUrls, " ")),
+		zap.String("metric", metric.hstreamMetric.GetMetricName()),
+		zap.String("res", fmt.Sprintf("%+v", res)))
+
+	switch metric.metricType {
+	case Summary:
+		if err = handleSummary(metric, res, ch); err != nil {
+			util.Logger().Error("create prometheus metric error", zap.String("metric", metric.hstreamMetric.GetMetricName()),
+				zap.Error(err))
+			return false
+		}
+	default:
+		if err = handleCounterAndGauge(metric, res, ch); err != nil {
+			util.Logger().Error("create prometheus metric error", zap.String("metric", metric.hstreamMetric.GetMetricName()),
+				zap.Error(err))
+			return false
+		}
+	}
+	return true
 }
 
 // serverStatsInfo indicates the stats scraped from the server
