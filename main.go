@@ -11,17 +11,19 @@ import (
 	"go.uber.org/zap"
 	"net/http"
 	"os"
+	"time"
 )
 
 var (
 	hServerAddr            = flag.String("addr", "127.0.0.1:6570", "HStream server addr")
 	listenAddr             = flag.String("listen-addr", ":9200", "Port on which to expose metrics")
 	disableExporterMetrics = flag.Bool("disable-exporter-metrics", false, "Exclude metrics about the exporter itself")
-	maxScrapeRequest       = flag.Int("max-request", 40, "Maximum number of parallel scrape requests. Use 0 to disable.")
+	maxScrapeRequest       = flag.Int("max-request", 100, "Maximum number of parallel scrape requests. Use 0 to disable.")
+	timeout                = flag.Int("timeout", 5, "Time out in seconds for each scrap request.")
 	logLevel               = flag.String("log-level", "info", "Exporter log level")
 )
 
-func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int) (http.Handler, error) {
+func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int, timeout int) (http.Handler, error) {
 	exporterMetricsRegistry := prometheus.NewRegistry()
 	if includeExporterMetrics {
 		exporterMetricsRegistry.MustRegister(
@@ -43,6 +45,7 @@ func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int) 
 		promhttp.HandlerOpts{
 			ErrorHandling:       promhttp.ContinueOnError,
 			MaxRequestsInFlight: maxRequests,
+			Timeout:             time.Duration(timeout) * time.Second,
 			Registry:            exporterMetricsRegistry,
 		},
 	)
@@ -60,7 +63,7 @@ func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int) 
 func main() {
 	flag.Parse()
 	util.InitLogger(*logLevel)
-	handler, err := newHandler(*hServerAddr, !(*disableExporterMetrics), *maxScrapeRequest)
+	handler, err := newHandler(*hServerAddr, !(*disableExporterMetrics), *maxScrapeRequest, *timeout)
 	if err != nil {
 		panic(fmt.Sprintf("create http handler err: %s", err.Error()))
 	}
