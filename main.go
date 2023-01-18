@@ -18,8 +18,8 @@ var (
 	hServerAddr            = flag.String("addr", "127.0.0.1:6570", "HStream server addr")
 	listenAddr             = flag.String("listen-addr", ":9200", "Port on which to expose metrics")
 	disableExporterMetrics = flag.Bool("disable-exporter-metrics", false, "Exclude metrics about the exporter itself")
-	maxScrapeRequest       = flag.Int("max-request", 100, "Maximum number of parallel scrape requests. Use 0 to disable.")
-	timeout                = flag.Int("timeout", 5, "Time out in seconds for each scrap request.")
+	maxScrapeRequest       = flag.Int("max-request", 0, "Maximum number of parallel scrape requests. Use 0 to disable.")
+	timeout                = flag.Int("timeout", 0, "Time out in seconds for each scrap request.")
 	logLevel               = flag.String("log-level", "info", "Exporter log level")
 )
 
