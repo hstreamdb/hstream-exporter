@@ -144,8 +144,8 @@ github.com/grpc-ecosystem/go-grpc-middleware v1.3.0/go.mod h1:z0ButlSOZa5vEBq9m2
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
 github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
-github.com/hstreamdb/hstreamdb-go v0.1.5-0.20221230074726-0827578c768f h1:maJ0iwM/clemYNYyBsZ6Z2q1YvugW5dszDI+SPTqjGA=
-github.com/hstreamdb/hstreamdb-go v0.1.5-0.20221230074726-0827578c768f/go.mod h1:Lu422o7n+CoWbui5DfMRWb488dWeqbf/ZQYf8NzF6xw=
+github.com/hstreamdb/hstreamdb-go v0.3.1 h1:1S21KcxYKAImN5+YezzzW8xXfilceDKpM91dkHnMgLA=
+github.com/hstreamdb/hstreamdb-go v0.3.1/go.mod h1:Lu422o7n+CoWbui5DfMRWb488dWeqbf/ZQYf8NzF6xw=
 github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
 github.com/jpillora/backoff v1.0.0/go.mod h1:J/6gKK9jxlEcS3zixgDgUAsiuZ7yrSoa/FX5e0EB2j4=
 github.com/json-iterator/go v1.1.6/go.mod h1:+SdeFBvtyEkXs7REEP0seUULqWtbJapLOCVDaaPEHmU=
