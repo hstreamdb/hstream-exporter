@@ -65,3 +65,19 @@ func ReplaceGlobals(logger *zap.Logger) {
 func Sync() error {
 	return Logger().Sync()
 }
+
+// PromErrLogger is a logger used by prometheus http server.
+type PromErrLogger struct {
+	lg *zap.SugaredLogger
+}
+
+func NewPromErrLogger() *PromErrLogger {
+	return &PromErrLogger{
+		Logger().Sugar(),
+	}
+}
+
+// Println implement promhttp.Logger interface
+func (p *PromErrLogger) Println(v ...interface{}) {
+	p.lg.Errorw("prometheus client error", v)
+}

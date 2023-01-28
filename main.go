@@ -44,6 +44,7 @@ func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int, 
 	handler := promhttp.HandlerFor(
 		prometheus.Gatherers{exporterMetricsRegistry, registry},
 		promhttp.HandlerOpts{
+			ErrorLog:            util.NewPromErrLogger(),
 			ErrorHandling:       promhttp.ContinueOnError,
 			MaxRequestsInFlight: maxRequests,
 			Timeout:             time.Duration(timeout) * time.Second,
