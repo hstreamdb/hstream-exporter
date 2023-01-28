@@ -15,12 +15,13 @@ import (
 )
 
 var (
-	hServerAddr            = flag.String("addr", "127.0.0.1:6570", "HStream server addr")
+	hServerAddr            = flag.String("addr", "hstream://127.0.0.1:6570", "HStream server addr")
 	listenAddr             = flag.String("listen-addr", ":9200", "Port on which to expose metrics")
 	disableExporterMetrics = flag.Bool("disable-exporter-metrics", false, "Exclude metrics about the exporter itself")
 	maxScrapeRequest       = flag.Int("max-request", 0, "Maximum number of parallel scrape requests. Use 0 to disable.")
-	timeout                = flag.Int("timeout", 0, "Time out in seconds for each scrap request.")
-	logLevel               = flag.String("log-level", "info", "Exporter log level")
+	// TODO: the prometheus scrap timeout must greater than hstream rpc request timeout(default 5s), add a validation
+	timeout  = flag.Int("timeout", 10, "Time out in seconds for each prometheus scrap request.")
+	logLevel = flag.String("log-level", "info", "Exporter log level")
 )
 
 func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int, timeout int) (http.Handler, error) {
