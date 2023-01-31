@@ -1,7 +1,7 @@
 package collector
 
 import (
-	"github.com/hstreamdb/hstreamdb-go/hstream"
+	"github.com/hstreamdb/hstream-exporter/scraper"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -9,79 +9,52 @@ const (
 	streamSubsystem = "stream"
 )
 
-type StreamCollector struct {
-	client     *hstream.HStreamClient
-	metrics    []Metrics
-	serverUrls []string
+type StreamMetrics struct {
+	Metrics []scraper.Metrics
 }
 
-func NewStreamCollector(client *hstream.HStreamClient, serverUrls []string) (Collector, error) {
-	appendBytes := Metrics{
-		metric: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, streamSubsystem, "append_in_bytes"),
+func NewStreamMetrics() *StreamMetrics {
+	appendInBytes := scraper.Metrics{
+		Type: scraper.StreamAppendInBytes,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, streamSubsystem, scraper.StreamAppendInBytes.String()),
 			"Successfully written bytes to the stream.",
 			[]string{"stream", "server_host"}, nil,
 		),
-		hstreamMetric: NewStreamCounterMetrics("append_in_bytes", StreamName),
-		metricType:    Counter,
 	}
-	appendRecords := Metrics{
-		metric: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, streamSubsystem, "append_in_records"),
+	appendInRecords := scraper.Metrics{
+		Type: scraper.StreamAppendInReccords,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, streamSubsystem, scraper.StreamAppendInReccords.String()),
 			"Successfully written records to the stream.",
 			[]string{"stream", "server_host"}, nil,
 		),
-		hstreamMetric: NewStreamCounterMetrics("append_in_records", StreamName),
-		metricType:    Counter,
 	}
-	//appendQPS := Metrics{
-	//	metric: prometheus.NewDesc(
-	//		prometheus.BuildFQName(namespace, streamSubsystem, "append_qps"),
-	//		"Rate of append requests received per stream.",
-	//		[]string{"stream", "server_host"}, nil,
-	//	),
-	//	hstreamMetric: NewStreamCounterMetrics("append_in_requests", StreamName),
-	//	metricType:    Counter,
-	//}
-	appendTotal := Metrics{
-		metric: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, streamSubsystem, "append_total"),
+	appendTotal := scraper.Metrics{
+		Type: scraper.StreamAppendTotal,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, streamSubsystem, scraper.StreamAppendTotal.String()),
 			"Number of append requests of a stream.",
 			[]string{"stream", "server_host"}, nil,
 		),
-		hstreamMetric: NewStreamCounterMetrics("append_total", StreamName),
-		metricType:    Counter,
 	}
-	appendFailed := Metrics{
-		metric: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, streamSubsystem, "append_failed"),
+	appendFailed := scraper.Metrics{
+		Type: scraper.StreamAppendFailed,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, streamSubsystem, scraper.StreamAppendFailed.String()),
 			"Number of failed append requests of a stream.",
 			[]string{"stream", "server_host"}, nil,
 		),
-		hstreamMetric: NewStreamCounterMetrics("append_failed", StreamName),
-		metricType:    Counter,
 	}
-	appendRequestLatency := Metrics{
-		metric: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, streamSubsystem, "append_latency"),
+	appendRequestLatency := scraper.Metrics{
+		Type: scraper.StreamAppendLatency,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, streamSubsystem, scraper.StreamAppendLatency.String()),
 			"Append request latency.",
 			[]string{"server_host"}, nil,
 		),
-		hstreamMetric: NewServerHistogramMetrics("append_request_latency", ServerSummary),
-		metricType:    Summary,
 	}
-
-	return &StreamCollector{
-		client:     client,
-		metrics:    []Metrics{appendBytes, appendRecords, appendTotal, appendFailed, appendRequestLatency},
-		serverUrls: serverUrls,
-	}, nil
-}
-
-func (s *StreamCollector) CollectorName() string {
-	return "StreamCollector"
-}
-
-func (s *StreamCollector) Collect(ch chan<- prometheus.Metric) (uint32, uint32) {
-	return ScrapeHServerMetrics(ch, s.client, s.metrics, s.serverUrls)
+	return &StreamMetrics{
+		Metrics: []scraper.Metrics{appendInBytes, appendInRecords, appendTotal, appendFailed, appendRequestLatency},
+	}
 }

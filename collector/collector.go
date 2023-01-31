@@ -1,10 +1,12 @@
 package collector
 
 import (
+	"github.com/hstreamdb/hstream-exporter/scraper"
 	"github.com/hstreamdb/hstreamdb-go/hstream"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"sync"
+	"time"
 )
 
 const (
@@ -21,69 +23,28 @@ var (
 	scrapeFailedDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "scrape", "failed_scrape_count"),
 		"hstream_exporter: Number of times the target state was failed scraped",
-		[]string{"collector"},
+		[]string{"server_host"},
 		nil,
+	)
+	scrapeLatencyDesc = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "hstream_exporter_scrape_latency",
+			Help:    "Histogram for per scrape latency.",
+			Buckets: prometheus.LinearBuckets(0, 10, 10),
+		},
+		[]string{"server_host"},
 	)
 )
 
-// Collector is an interface which a collector need to implement
-type Collector interface {
-	CollectorName() string
-	// Collect Get new metrics and expose them via prometheus registry.
-	Collect(ch chan<- prometheus.Metric) (successCnt uint32, failedCnt uint32)
-}
-
-type Metrics struct {
-	metric        *prometheus.Desc
-	hstreamMetric HStreamMetrics
-	metricType    MetricType
-}
-
 // HStreamCollector implements the prometheus.Collector interface
 type HStreamCollector struct {
-	Collectors map[string]Collector
+	TargetUrls    []string
+	StreamMetrics *StreamMetrics
+	SubMetrics    *SubscriptionMetrics
+	scraper       scraper.Scrape
 }
 
-type newCollectorFunc func(*hstream.HStreamClient, []string) (Collector, error)
-
-// collectorRegister is a collector builder which register all needed metrics,
-// then build a HStreamCollector instance.
-type collectorRegister struct {
-	urls       []string
-	client     *hstream.HStreamClient
-	collectors map[string]Collector
-	err        error
-}
-
-func newRegister(client *hstream.HStreamClient, urls []string) *collectorRegister {
-	return &collectorRegister{
-		urls:       urls,
-		client:     client,
-		collectors: make(map[string]Collector),
-	}
-}
-
-func (r *collectorRegister) register(f newCollectorFunc) {
-	if r.err != nil {
-		return
-	}
-
-	collector, err := f(r.client, r.urls)
-	if err != nil {
-		r.err = err
-		return
-	}
-	r.collectors[collector.CollectorName()] = collector
-}
-
-func (r *collectorRegister) finish() (*HStreamCollector, error) {
-	if r.err != nil {
-		return nil, r.err
-	}
-	return &HStreamCollector{r.collectors}, nil
-}
-
-func NewHStreamCollector(serverUrl string) (*HStreamCollector, error) {
+func NewHStreamCollector(serverUrl string, registry *prometheus.Registry) (*HStreamCollector, error) {
 	client, err := hstream.NewHStreamClient(serverUrl)
 	if err != nil {
 		return nil, errors.WithMessage(err, "Create HStream client error")
@@ -93,13 +54,24 @@ func NewHStreamCollector(serverUrl string) (*HStreamCollector, error) {
 	if err != nil {
 		return nil, errors.WithMessage(err, "Get server info error")
 	}
+	registry.MustRegister(scrapeLatencyDesc)
+	return &HStreamCollector{
+		TargetUrls:    urls,
+		StreamMetrics: NewStreamMetrics(),
+		SubMetrics:    NewSubscriptionMetrics(),
+		scraper:       scraper.NewScraper(client),
+	}, nil
+}
 
-	rg := newRegister(client, urls)
-	for _, fc := range []newCollectorFunc{NewStreamCollector, NewSubCollector} {
-		rg.register(fc)
+func (h *HStreamCollector) getScrapedMetrics() []scraper.Metrics {
+	metrics := []scraper.Metrics{}
+	for _, m := range h.StreamMetrics.Metrics {
+		metrics = append(metrics, m)
 	}
-
-	return rg.finish()
+	for _, m := range h.SubMetrics.Metrics {
+		metrics = append(metrics, m)
+	}
+	return metrics
 }
 
 // Describe implement prometheus.Collector interface
@@ -111,18 +83,24 @@ func (h *HStreamCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect implement prometheus.Collector interface
 func (h *HStreamCollector) Collect(ch chan<- prometheus.Metric) {
 	wg := sync.WaitGroup{}
-	wg.Add(len(h.Collectors))
-	for name, c := range h.Collectors {
-		go func(name string, c Collector) {
-			execute(name, c, ch)
-			wg.Done()
-		}(name, c)
+	wg.Add(len(h.TargetUrls))
+	metrics := h.getScrapedMetrics()
+	for _, u := range h.TargetUrls {
+		go func(url string) {
+			defer wg.Done()
+			execute(h.scraper, metrics, url, ch)
+		}(u)
 	}
 	wg.Wait()
 }
 
-func execute(name string, c Collector, ch chan<- prometheus.Metric) {
-	success, faild := c.Collect(ch)
-	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, float64(success), name)
-	ch <- prometheus.MustNewConstMetric(scrapeFailedDesc, prometheus.GaugeValue, float64(faild), name)
+func execute(scraper scraper.Scrape, metrics []scraper.Metrics, target string, ch chan<- prometheus.Metric) {
+	start := time.Now()
+	success, faild := scraper.Scrape(target, metrics, ch)
+	diff := time.Now().Sub(start)
+
+	scrapeLatencyDesc.WithLabelValues(target).Observe(float64(diff.Milliseconds()))
+
+	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, float64(success), target)
+	ch <- prometheus.MustNewConstMetric(scrapeFailedDesc, prometheus.GaugeValue, float64(faild), target)
 }

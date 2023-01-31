@@ -1,7 +1,7 @@
 package collector
 
 import (
-	"github.com/hstreamdb/hstreamdb-go/hstream"
+	"github.com/hstreamdb/hstream-exporter/scraper"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -9,79 +9,78 @@ const (
 	subSubsystem = "subscription"
 )
 
-type SubCollector struct {
-	client     *hstream.HStreamClient
-	metrics    []Metrics
-	serverUrls []string
+type SubscriptionMetrics struct {
+	Metrics []scraper.Metrics
 }
 
-func NewSubCollector(client *hstream.HStreamClient, serverUrls []string) (Collector, error) {
-	sendBytes := Metrics{
-		metric: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subSubsystem, "send_bytes"),
+func NewSubscriptionMetrics() *SubscriptionMetrics {
+	sendBytes := scraper.Metrics{
+		Type: scraper.SubSendOutBytes,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subSubsystem, scraper.SubSendOutBytes.String()),
 			"Bytes send by each subscription.",
 			[]string{"subId", "server_host"}, nil,
 		),
-		hstreamMetric: NewSubscriptionCounterMetrics("send_out_bytes", SubscriptionId),
-		metricType:    Counter,
 	}
-	sendRecords := Metrics{
-		metric: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subSubsystem, "send_records"),
+	sendRecords := scraper.Metrics{
+		Type: scraper.SubSendOutRecords,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subSubsystem, scraper.SubSendOutRecords.String()),
 			"Records send by each subscription.",
 			[]string{"subId", "server_host"}, nil,
 		),
-		hstreamMetric: NewSubscriptionCounterMetrics("send_out_records", SubscriptionId),
-		metricType:    Counter,
 	}
-	msgRequestRate := Metrics{
-		metric: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subSubsystem, "request_messages"),
-			"Requests received from clients per subscription.",
+	sendRecordsFailed := scraper.Metrics{
+		Type: scraper.SubSendOutRecordsFailed,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subSubsystem, scraper.SubSendOutRecordsFailed.String()),
+			"Records send failed by each subscription.",
 			[]string{"subId", "server_host"}, nil,
 		),
-		hstreamMetric: NewSubscriptionCounterMetrics("request_messages", SubscriptionId),
-		metricType:    Counter,
 	}
-	msgResponseRate := Metrics{
-		metric: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subSubsystem, "response_messages"),
-			"Response sent to clients per subscription.",
-			[]string{"subId", "server_host"}, nil,
-		),
-		hstreamMetric: NewSubscriptionCounterMetrics("response_messages", SubscriptionId),
-		metricType:    Counter,
-	}
-	acks := Metrics{
-		metric: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subSubsystem, "acks"),
+	acks := scraper.Metrics{
+		Type: scraper.SubReceivedAcks,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subSubsystem, scraper.SubReceivedAcks.String()),
 			"Acknowledgements received per subscription.",
 			[]string{"subId", "server_host"}, nil,
 		),
-		hstreamMetric: NewSubscriptionCounterMetrics("acks", SubscriptionId),
-		metricType:    Counter,
 	}
-	resendRate := Metrics{
-		metric: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subSubsystem, "resend_records"),
+	resendRecords := scraper.Metrics{
+		Type: scraper.SubResendRecords,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subSubsystem, scraper.SubResendRecords.String()),
 			"Total number of resent records per subscription.",
 			[]string{"subId", "server_host"}, nil,
 		),
-		hstreamMetric: NewSubscriptionCounterMetrics("resend_records", SubscriptionId),
-		metricType:    Counter,
+	}
+	resendRecordsFailed := scraper.Metrics{
+		Type: scraper.SubResendRecordsFailed,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subSubsystem, scraper.SubResendRecordsFailed.String()),
+			"Total number of failed resent records per subscription.",
+			[]string{"subId", "server_host"}, nil,
+		),
+	}
+	msgRequestRate := scraper.Metrics{
+		Type: scraper.SubRequestMessages,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subSubsystem, scraper.SubRequestMessages.String()),
+			"Requests received from clients per subscription.",
+			[]string{"subId", "server_host"}, nil,
+		),
+	}
+	msgResponseRate := scraper.Metrics{
+		Type: scraper.SubResponseMessages,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subSubsystem, scraper.SubResponseMessages.String()),
+			"Response sent to clients per subscription.",
+			[]string{"subId", "server_host"}, nil,
+		),
 	}
 
-	return &SubCollector{
-		client:     client,
-		metrics:    []Metrics{sendBytes, sendRecords, msgRequestRate, msgResponseRate, acks, resendRate},
-		serverUrls: serverUrls,
-	}, nil
-}
-
-func (s *SubCollector) CollectorName() string {
-	return "SubCollector"
-}
-
-func (s *SubCollector) Collect(ch chan<- prometheus.Metric) (uint32, uint32) {
-	return ScrapeHServerMetrics(ch, s.client, s.metrics, s.serverUrls)
+	return &SubscriptionMetrics{
+		Metrics: []scraper.Metrics{sendBytes, sendRecords, acks,
+			sendRecordsFailed, resendRecords, resendRecordsFailed, msgRequestRate, msgResponseRate},
+	}
 }
