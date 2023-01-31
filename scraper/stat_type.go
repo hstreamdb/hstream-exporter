@@ -46,9 +46,9 @@ func (s StatType) String() string {
 	case SubSendOutRecords:
 		return "send_out_records"
 	case SubSendOutRecordsFailed:
-		return "send_out_records_faield"
+		return "send_out_records_failed"
 	case SubResendRecords:
-		return "resend_reords"
+		return "resend_records"
 	case SubResendRecordsFailed:
 		return "resend_records_failed"
 	case SubReceivedAcks:
