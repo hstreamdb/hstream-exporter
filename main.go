@@ -33,13 +33,12 @@ func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int, 
 		)
 	}
 
-	exporter, err := collector.NewHStreamCollector(serverUrl)
+	registry := prometheus.NewRegistry()
+	exporter, err := collector.NewHStreamCollector(serverUrl, registry)
 	if err != nil {
 		return nil, err
 	}
 	util.Logger().Info("create connection with hstream server", zap.String("url", serverUrl))
-
-	registry := prometheus.NewRegistry()
 	registry.MustRegister(exporter)
 	handler := promhttp.HandlerFor(
 		prometheus.Gatherers{exporterMetricsRegistry, registry},
@@ -81,7 +80,7 @@ func main() {
 	})
 
 	server := &http.Server{Addr: *listenAddr}
-	if err := server.ListenAndServe(); err != nil {
+	if err = server.ListenAndServe(); err != nil {
 		os.Exit(1)
 	}
 }
