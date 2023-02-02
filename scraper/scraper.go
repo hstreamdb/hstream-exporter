@@ -74,12 +74,13 @@ func (s *Scraper) batchScrape(wg *sync.WaitGroup, target string, metrics map[hst
 			return
 		}
 
+		addr := strings.Split(target, ":")[0]
 		for _, st := range statsResult {
 			switch st.(type) {
 			case hstream.StatValue:
 				stat := st.(hstream.StatValue)
 				for k, v := range stat.Value {
-					ch <- prometheus.MustNewConstMetric(metrics[stat.Type], prometheus.CounterValue, float64(v), k, target)
+					ch <- prometheus.MustNewConstMetric(metrics[stat.Type], prometheus.CounterValue, float64(v), k, addr)
 				}
 			case hstream.StatError:
 				stErr := st.(hstream.StatError)
