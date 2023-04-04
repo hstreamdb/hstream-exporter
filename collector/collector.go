@@ -1,11 +1,15 @@
 package collector
 
 import (
+	"fmt"
 	"github.com/hstreamdb/hstream-exporter/scraper"
+	"github.com/hstreamdb/hstream-exporter/util"
 	"github.com/hstreamdb/hstreamdb-go/hstream"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -34,6 +38,9 @@ var (
 		},
 		[]string{"server_host"},
 	)
+
+	totalSuccessedScrap = atomic.Uint64{}
+	totalFailedScrap    = atomic.Uint64{}
 )
 
 // HStreamCollector implements the prometheus.Collector interface
@@ -54,6 +61,7 @@ func NewHStreamCollector(serverUrl string, registry *prometheus.Registry) (*HStr
 	if err != nil {
 		return nil, errors.WithMessage(err, "Get server info error")
 	}
+	util.Logger().Info("Get server urls", zap.String("urls", fmt.Sprintf("%v", urls)))
 	registry.MustRegister(scrapeLatencyDesc)
 	return &HStreamCollector{
 		TargetUrls:    urls,
@@ -98,9 +106,15 @@ func execute(scraper scraper.Scrape, metrics []scraper.Metrics, target string, c
 	start := time.Now()
 	success, faild := scraper.Scrape(target, metrics, ch)
 	diff := time.Now().Sub(start)
+	util.Logger().Debug("Scrape target done", zap.String("url", target),
+		zap.Int64("milliseconds latency", diff.Milliseconds()),
+		zap.Int32("success request", success),
+		zap.Int32("failed request", faild))
 
 	scrapeLatencyDesc.WithLabelValues(target).Observe(float64(diff.Milliseconds()))
+	totalSuccessedScrap.Add(uint64(success))
+	totalFailedScrap.Add(uint64(faild))
 
-	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, float64(success), target)
-	ch <- prometheus.MustNewConstMetric(scrapeFailedDesc, prometheus.GaugeValue, float64(faild), target)
+	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.CounterValue, float64(totalSuccessedScrap.Load()), target)
+	ch <- prometheus.MustNewConstMetric(scrapeFailedDesc, prometheus.CounterValue, float64(totalFailedScrap.Load()), target)
 }
