@@ -80,6 +80,7 @@ func main() {
 	})
 
 	server := &http.Server{Addr: *listenAddr}
+	util.Logger().Info("HStream Exporter start", zap.String("address", *listenAddr))
 	if err = server.ListenAndServe(); err != nil {
 		os.Exit(1)
 	}
