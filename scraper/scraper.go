@@ -40,7 +40,7 @@ func (s *Scraper) Scrape(target string, metrics []Metrics, ch chan<- prometheus.
 	summaryMetrics := make(map[StatType]*prometheus.Desc)
 	for _, m := range metrics {
 		if _, ok := summaryMetricSet[m.Type]; !ok {
-			batchedMetrics[m.Type.ToHstreamStatType()] = m.Metric
+			batchedMetrics[m.Type.ToHStreamStatType()] = m.Metric
 		} else {
 			summaryMetrics[m.Type] = m.Metric
 		}

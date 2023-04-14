@@ -3,7 +3,7 @@ module github.com/hstreamdb/hstream-exporter
 go 1.19
 
 require (
-	github.com/hstreamdb/hstreamdb-go v0.3.2-0.20230131065024-6f572d001108
+	github.com/hstreamdb/hstreamdb-go v0.3.2-0.20230414074500-252ccfa9dcc2
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.14.0
 	go.uber.org/zap v1.23.0
@@ -22,9 +22,9 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	golang.org/x/net v0.0.0-20220617184016-355a448f1bc9 // indirect
-	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	google.golang.org/genproto v0.0.0-20220617124728-180714bec0ad // indirect
 	google.golang.org/grpc v1.47.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect

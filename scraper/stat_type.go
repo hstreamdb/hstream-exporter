@@ -27,6 +27,9 @@ const (
 	SubReceivedAcks
 	SubRequestMessages
 	SubResponseMessages
+
+	ConnectorDeliveredInRecords
+	ConnectorDeliveredInBytes
 )
 
 func (s StatType) String() string {
@@ -57,12 +60,16 @@ func (s StatType) String() string {
 		return "request_messages"
 	case SubResponseMessages:
 		return "response_messages"
+	case ConnectorDeliveredInRecords:
+		return "connector_delivered_in_records"
+	case ConnectorDeliveredInBytes:
+		return "connector_delivered_in_bytes"
 	}
 	return ""
 }
 
 // NOTE: StreamAppendLatency doesn't have a hstream.StatType
-func (s StatType) ToHstreamStatType() hstream.StatType {
+func (s StatType) ToHStreamStatType() hstream.StatType {
 	switch s {
 	case StreamAppendInBytes:
 		return hstream.StreamAppendInBytes
@@ -88,6 +95,10 @@ func (s StatType) ToHstreamStatType() hstream.StatType {
 		return hstream.SubRequestMessages
 	case SubResponseMessages:
 		return hstream.SubResponseMessages
+	case ConnectorDeliveredInBytes:
+		return hstream.ConnectorDeliveredInBytes
+	case ConnectorDeliveredInRecords:
+		return hstream.ConnectorDeliveredInRecords
 	}
 	return nil
 }
