@@ -64,6 +64,8 @@ github.com/grpc-ecosystem/go-grpc-middleware v1.3.0/go.mod h1:z0ButlSOZa5vEBq9m2
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
 github.com/hstreamdb/hstreamdb-go v0.3.2-0.20230414074500-252ccfa9dcc2 h1:IbzI20qT0NkRVytMAoEf+CFyWnS26aRXUVICZk5f5z4=
 github.com/hstreamdb/hstreamdb-go v0.3.2-0.20230414074500-252ccfa9dcc2/go.mod h1:dVLtxsmREt8PlButHC5lz4uc6WQO/Z0CGONMASIjVbQ=
+github.com/hstreamdb/hstreamdb-go v0.3.2-0.20230423032658-1991bbd774fc h1:GKKzjKZLZPjnUVq87DI7nrG+0QUORIwHBkVC3bhz6O0=
+github.com/hstreamdb/hstreamdb-go v0.3.2-0.20230423032658-1991bbd774fc/go.mod h1:dVLtxsmREt8PlButHC5lz4uc6WQO/Z0CGONMASIjVbQ=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/klauspost/compress v1.15.11 h1:Lcadnb3RKGin4FYM/orgq0qde+nc15E5Cbqg4B9Sx9c=

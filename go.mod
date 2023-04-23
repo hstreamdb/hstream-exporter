@@ -3,7 +3,7 @@ module github.com/hstreamdb/hstream-exporter
 go 1.19
 
 require (
-	github.com/hstreamdb/hstreamdb-go v0.3.2-0.20230414074500-252ccfa9dcc2
+	github.com/hstreamdb/hstreamdb-go v0.3.2-0.20230423032658-1991bbd774fc
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.15.0
 	go.uber.org/zap v1.23.0
