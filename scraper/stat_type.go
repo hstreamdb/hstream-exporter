@@ -30,6 +30,9 @@ const (
 
 	ConnectorDeliveredInRecords
 	ConnectorDeliveredInBytes
+
+	QueryTotalInputRecords
+	QueryTotalOutputRecords
 )
 
 func (s StatType) String() string {
@@ -64,6 +67,10 @@ func (s StatType) String() string {
 		return "connector_delivered_in_records"
 	case ConnectorDeliveredInBytes:
 		return "connector_delivered_in_bytes"
+	case QueryTotalInputRecords:
+		return "query_total_input_records"
+	case QueryTotalOutputRecords:
+		return "query_total_output_records"
 	}
 	return ""
 }
@@ -99,6 +106,10 @@ func (s StatType) ToHStreamStatType() hstream.StatType {
 		return hstream.ConnectorDeliveredInBytes
 	case ConnectorDeliveredInRecords:
 		return hstream.ConnectorDeliveredInRecords
+	case QueryTotalInputRecords:
+		return hstream.QueryTotalInputRecords
+	case QueryTotalOutputRecords:
+		return hstream.QueryTotalOutputRecords
 	}
 	return nil
 }
