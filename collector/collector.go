@@ -50,6 +50,7 @@ type HStreamCollector struct {
 	SubMetrics    *SubscriptionMetrics
 	ConnMetrics   *ConnectorMetrics
 	QueryMetrics  *QueryMetrics
+	ViewMetrics   *ViewMetrics
 	scraper       scraper.Scrape
 }
 
@@ -71,6 +72,7 @@ func NewHStreamCollector(serverUrl string, registry *prometheus.Registry) (*HStr
 		SubMetrics:    NewSubscriptionMetrics(),
 		ConnMetrics:   NewConnectorMetrics(),
 		QueryMetrics:  NewQueryMetrics(),
+		ViewMetrics:   NewViewMetrics(),
 		scraper:       scraper.NewScraper(client),
 	}, nil
 }
@@ -87,6 +89,9 @@ func (h *HStreamCollector) getScrapedMetrics() []scraper.Metrics {
 		metrics = append(metrics, m)
 	}
 	for _, m := range h.QueryMetrics.Metrics {
+		metrics = append(metrics, m)
+	}
+	for _, m := range h.ViewMetrics.Metrics {
 		metrics = append(metrics, m)
 	}
 	return metrics
