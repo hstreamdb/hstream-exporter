@@ -19,7 +19,7 @@ func NewConnectorMetrics() *ConnectorMetrics {
 		Metric: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, connectorSubsystem, scraper.ConnectorDeliveredInBytes.String()),
 			"Connector successfully delivered in bytes.",
-			[]string{"task", "server_host"}, nil,
+			[]string{"connector", "server_host"}, nil,
 		),
 	}
 	deliveredInRecords := scraper.Metrics{
@@ -27,7 +27,7 @@ func NewConnectorMetrics() *ConnectorMetrics {
 		Metric: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, connectorSubsystem, scraper.ConnectorDeliveredInRecords.String()),
 			"Connector successfully delivered in records.",
-			[]string{"task", "server_host"}, nil,
+			[]string{"connector", "server_host"}, nil,
 		),
 	}
 	return &ConnectorMetrics{

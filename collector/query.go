@@ -30,7 +30,15 @@ func NewQueryMetrics() *QueryMetrics {
 			[]string{"query_id", "server_host"}, nil,
 		),
 	}
+	totalExecuteErrors := scraper.Metrics{
+		Type: scraper.QueryTotalExecuteErrors,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, querySubsystem, scraper.QueryTotalExecuteErrors.String()),
+			"Total number of query execute errors.",
+			[]string{"query_id", "server_host"}, nil,
+		),
+	}
 	return &QueryMetrics{
-		Metrics: []scraper.Metrics{totalInputRecords, totalOutputRecords},
+		Metrics: []scraper.Metrics{totalInputRecords, totalOutputRecords, totalExecuteErrors},
 	}
 }
