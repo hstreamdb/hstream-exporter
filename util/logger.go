@@ -79,5 +79,5 @@ func NewPromErrLogger() *PromErrLogger {
 
 // Println implement promhttp.Logger interface
 func (p *PromErrLogger) Println(v ...interface{}) {
-	p.lg.Errorw("prometheus client error", v)
+	p.lg.Errorf("prometheus client error: %+v", v)
 }
