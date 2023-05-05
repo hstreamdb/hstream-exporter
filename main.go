@@ -61,14 +61,38 @@ func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int, 
 	return handler, nil
 }
 
+// updateLogLevel handle update log level request, e.g.: curl -X localhost:9200/log_level?debug
+func updateLogLevel(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "update log level only accept a post request", http.StatusBadRequest)
+		return
+	}
+
+	level := r.URL.RawQuery
+
+	util.Logger().Info("receive update log-level request", zap.String("level", level))
+	if err := util.UpdateLogLevel(level); err != nil {
+		util.Logger().Error("update logger error", zap.String("error", err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	util.Logger().Info("update log level success", zap.String("level", level))
+	return
+}
+
 func main() {
 	flag.Parse()
-	util.InitLogger(*logLevel)
+	if err := util.InitLogger(*logLevel); err != nil {
+		util.Logger().Error("init logger error", zap.Error(err))
+		os.Exit(1)
+	}
+
 	handler, err := newHandler(*hServerAddr, !(*disableExporterMetrics), *maxScrapeRequest, *timeout)
 	if err != nil {
 		panic(fmt.Sprintf("create http handler err: %s", err.Error()))
 	}
 	http.Handle("/metrics", handler)
+	http.HandleFunc("/log_level", updateLogLevel)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
 			<head><title>HStream Exporter</title></head>
