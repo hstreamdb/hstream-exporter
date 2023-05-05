@@ -81,6 +81,10 @@ func (s *Scraper) batchScrape(wg *sync.WaitGroup, target string, metrics map[hst
 				stat := st.(hstream.StatValue)
 				for k, v := range stat.Value {
 					ch <- prometheus.MustNewConstMetric(metrics[stat.Type], prometheus.CounterValue, float64(v), k, addr)
+					util.Logger().Debug(fmt.Sprintf("scrape counter [%s]", stat.Type),
+						zap.String("host", addr),
+						zap.String("metrics", fmt.Sprintf("%s: %v", k, v)),
+					)
 				}
 			case hstream.StatError:
 				stErr := st.(hstream.StatError)
@@ -121,8 +125,8 @@ func (s *Scraper) scrapeSummary(wg *sync.WaitGroup, target string, metrics map[S
 					zap.String("url", addr), zap.Error(err))
 				return
 			}
-			table["server_host"] = strings.Split(addr, ":")[0]
-			if err = handleSummary(metrics[metric], table, ch); err != nil {
+			table["server_host"] = addr
+			if err = handleSummary(metrics[metric], metric, table, ch); err != nil {
 				failed.Add(1)
 				util.Logger().Error("handle summary stats error", zap.String("stat", metric.String()),
 					zap.String("target", addr), zap.Error(err))
@@ -180,7 +184,7 @@ func parseResponse(resp string) (serverStatsInfo, error) {
 	return mp, nil
 }
 
-func handleSummary(metric *prometheus.Desc, mp map[string]string, ch chan<- prometheus.Metric) error {
+func handleSummary(metric *prometheus.Desc, metricType StatType, mp map[string]string, ch chan<- prometheus.Metric) error {
 	var err error
 	parse := func(input string) float64 {
 		if err != nil {
@@ -200,6 +204,11 @@ func handleSummary(metric *prometheus.Desc, mp map[string]string, ch chan<- prom
 	if err != nil {
 		return err
 	}
+
+	util.Logger().Debug(fmt.Sprintf("scrape summary [%s]", metricType),
+		zap.String("host", mp["server_host"]),
+		zap.String("metrics", fmt.Sprintf("%+v", mp)),
+	)
 
 	ch <- prometheus.MustNewConstSummary(metric, 0, 0,
 		map[float64]float64{0.5: p50, 0.95: p95, 0.99: p99}, mp["server_host"])
