@@ -20,8 +20,9 @@ var (
 	disableExporterMetrics = flag.Bool("disable-exporter-metrics", false, "Exclude metrics about the exporter itself")
 	maxScrapeRequest       = flag.Int("max-request", 0, "Maximum number of parallel scrape requests. Use 0 to disable.")
 	// TODO: the prometheus scrap timeout must greater than hstream rpc request timeout(default 5s), add a validation
-	timeout  = flag.Int("timeout", 10, "Time out in seconds for each prometheus scrap request.")
-	logLevel = flag.String("log-level", "info", "Exporter log level")
+	timeout               = flag.Int("timeout", 10, "Time out in seconds for each prometheus scrap request.")
+	logLevel              = flag.String("log-level", "info", "Exporter log level")
+	getServerInfoDuration = flag.Int("get-server-info-duration", 30, "Get server info in second duration.")
 )
 
 func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int, timeout int) (http.Handler, error) {
@@ -34,7 +35,7 @@ func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int, 
 	}
 
 	registry := prometheus.NewRegistry()
-	exporter, err := collector.NewHStreamCollector(serverUrl, registry)
+	exporter, err := collector.NewHStreamCollector(serverUrl, *getServerInfoDuration, registry)
 	if err != nil {
 		return nil, err
 	}

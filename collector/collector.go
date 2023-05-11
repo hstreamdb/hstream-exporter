@@ -45,16 +45,45 @@ var (
 
 // HStreamCollector implements the prometheus.Collector interface
 type HStreamCollector struct {
-	TargetUrls    []string
-	StreamMetrics *StreamMetrics
-	SubMetrics    *SubscriptionMetrics
-	ConnMetrics   *ConnectorMetrics
-	QueryMetrics  *QueryMetrics
-	ViewMetrics   *ViewMetrics
-	scraper       scraper.Scrape
+	StreamMetrics        *StreamMetrics
+	SubMetrics           *SubscriptionMetrics
+	ConnMetrics          *ConnectorMetrics
+	QueryMetrics         *QueryMetrics
+	ViewMetrics          *ViewMetrics
+	scraper              scraper.Scrape
+	serverUpdateDuration time.Duration
+
+	client *hstream.HStreamClient
+
+	// The following fields are protected by the lock
+	lock       sync.RWMutex
+	TargetUrls []string
 }
 
-func NewHStreamCollector(serverUrl string, registry *prometheus.Registry) (*HStreamCollector, error) {
+func (h *HStreamCollector) getServerInfo() {
+	ticker := time.NewTimer(h.serverUpdateDuration)
+	defer func() {
+		util.Logger().Info("exit get server info loop.")
+		ticker.Stop()
+	}()
+
+	util.Logger().Info("start get server info loop.", zap.String("duration", h.serverUpdateDuration.String()))
+
+	for range ticker.C {
+		urls, err := h.client.GetServerInfo()
+		if err != nil {
+			util.Logger().Error("get server info return error", zap.String("error", err.Error()))
+			continue
+		}
+
+		h.lock.Lock()
+		h.TargetUrls = urls
+		util.Logger().Debug("get server info", zap.String("urls", fmt.Sprintf("%+v", urls)))
+		h.lock.Unlock()
+	}
+}
+
+func NewHStreamCollector(serverUrl string, duration int, registry *prometheus.Registry) (*HStreamCollector, error) {
 	client, err := hstream.NewHStreamClient(serverUrl)
 	if err != nil {
 		return nil, errors.WithMessage(err, "Create HStream client error")
@@ -64,17 +93,23 @@ func NewHStreamCollector(serverUrl string, registry *prometheus.Registry) (*HStr
 	if err != nil {
 		return nil, errors.WithMessage(err, "Get server info error")
 	}
+
 	util.Logger().Info("Get server urls", zap.String("urls", fmt.Sprintf("%v", urls)))
 	registry.MustRegister(scrapeLatencyDesc)
-	return &HStreamCollector{
-		TargetUrls:    urls,
-		StreamMetrics: NewStreamMetrics(),
-		SubMetrics:    NewSubscriptionMetrics(),
-		ConnMetrics:   NewConnectorMetrics(),
-		QueryMetrics:  NewQueryMetrics(),
-		ViewMetrics:   NewViewMetrics(),
-		scraper:       scraper.NewScraper(client),
-	}, nil
+	collector := &HStreamCollector{
+		TargetUrls:           urls,
+		StreamMetrics:        NewStreamMetrics(),
+		SubMetrics:           NewSubscriptionMetrics(),
+		ConnMetrics:          NewConnectorMetrics(),
+		QueryMetrics:         NewQueryMetrics(),
+		ViewMetrics:          NewViewMetrics(),
+		scraper:              scraper.NewScraper(client),
+		serverUpdateDuration: time.Duration(duration) * time.Second,
+		client:               client,
+	}
+	go collector.getServerInfo()
+
+	return collector, nil
 }
 
 func (h *HStreamCollector) getScrapedMetrics() []scraper.Metrics {
@@ -106,14 +141,16 @@ func (h *HStreamCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect implement prometheus.Collector interface
 func (h *HStreamCollector) Collect(ch chan<- prometheus.Metric) {
 	wg := sync.WaitGroup{}
-	wg.Add(len(h.TargetUrls))
 	metrics := h.getScrapedMetrics()
+	h.lock.RLock()
+	wg.Add(len(h.TargetUrls))
 	for _, u := range h.TargetUrls {
 		go func(url string) {
 			defer wg.Done()
 			execute(h.scraper, metrics, url, ch)
 		}(u)
 	}
+	h.lock.RUnlock()
 	wg.Wait()
 }
 
