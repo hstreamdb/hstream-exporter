@@ -62,7 +62,7 @@ func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int, 
 	return handler, nil
 }
 
-// updateLogLevel handle update log level request, e.g.: curl -X localhost:9200/log_level?debug
+// updateLogLevel handle update log level request, e.g.: curl -X POST localhost:9200/log_level?debug
 func updateLogLevel(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "update log level only accept a post request", http.StatusBadRequest)
