@@ -61,7 +61,7 @@ type HStreamCollector struct {
 }
 
 func (h *HStreamCollector) getServerInfo() {
-	ticker := time.NewTimer(h.serverUpdateDuration)
+	ticker := time.NewTicker(h.serverUpdateDuration)
 	defer func() {
 		util.Logger().Info("exit get server info loop.")
 		ticker.Stop()
