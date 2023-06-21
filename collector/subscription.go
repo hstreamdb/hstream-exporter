@@ -78,9 +78,17 @@ func NewSubscriptionMetrics() *SubscriptionMetrics {
 			[]string{"subId", "server_host"}, nil,
 		),
 	}
+	checkListSize := scraper.Metrics{
+		Type: scraper.SubCheckListSize,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subSubsystem, scraper.SubCheckListSize.String()),
+			"Checklist size per subscription.",
+			[]string{"subId", "server_host"}, nil,
+		),
+	}
 
 	return &SubscriptionMetrics{
 		Metrics: []scraper.Metrics{sendBytes, sendRecords, acks,
-			sendRecordsFailed, resendRecords, resendRecordsFailed, msgRequestRate, msgResponseRate},
+			sendRecordsFailed, resendRecords, resendRecordsFailed, msgRequestRate, msgResponseRate, checkListSize},
 	}
 }

@@ -27,6 +27,7 @@ const (
 	SubReceivedAcks
 	SubRequestMessages
 	SubResponseMessages
+	SubCheckListSize
 
 	ConnectorDeliveredInRecords
 	ConnectorDeliveredInBytes
@@ -66,6 +67,8 @@ func (s StatType) String() string {
 		return "request_messages"
 	case SubResponseMessages:
 		return "response_messages"
+	case SubCheckListSize:
+		return "checklist_size"
 	case ConnectorDeliveredInRecords:
 		return "delivered_in_records"
 	case ConnectorDeliveredInBytes:
@@ -109,6 +112,8 @@ func (s StatType) ToHStreamStatType() hstream.StatType {
 		return hstream.SubRequestMessages
 	case SubResponseMessages:
 		return hstream.SubResponseMessages
+	case SubCheckListSize:
+		return hstream.SubCheckListSize
 	case ConnectorDeliveredInBytes:
 		return hstream.ConnectorDeliveredInBytes
 	case ConnectorDeliveredInRecords:
