@@ -54,7 +54,32 @@ func NewStreamMetrics() *StreamMetrics {
 			[]string{"server_host"}, nil,
 		),
 	}
+	readInBytes := scraper.Metrics{
+		Type: scraper.StreamReadInBytes,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, streamSubsystem, scraper.StreamReadInBytes.String()),
+			"Successfully read bytes from the stream.",
+			[]string{"stream", "server_host"}, nil,
+		),
+	}
+	readInBatches := scraper.Metrics{
+		Type: scraper.StreamReadInBatches,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, streamSubsystem, scraper.StreamReadInBatches.String()),
+			"Successfully read batches from the stream.",
+			[]string{"stream", "server_host"}, nil,
+		),
+	}
+	readStreamLatency := scraper.Metrics{
+		Type: scraper.StreamReadLatency,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, streamSubsystem, scraper.StreamReadLatency.String()),
+			"Read stream latency.",
+			[]string{"server_host"}, nil,
+		),
+	}
 	return &StreamMetrics{
-		Metrics: []scraper.Metrics{appendInBytes, appendInRecords, appendTotal, appendFailed, appendRequestLatency},
+		Metrics: []scraper.Metrics{appendInBytes, appendInRecords, appendTotal, appendFailed, appendRequestLatency,
+			readInBytes, readInBatches, readStreamLatency},
 	}
 }
