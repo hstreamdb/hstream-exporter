@@ -18,6 +18,9 @@ const (
 	StreamAppendTotal
 	StreamAppendFailed
 	StreamAppendLatency
+	StreamReadInBytes
+	StreamReadInBatches
+	StreamReadLatency
 
 	SubSendOutBytes
 	SubSendOutRecords
@@ -51,6 +54,12 @@ func (s StatType) String() string {
 		return "append_failed"
 	case StreamAppendLatency:
 		return "append_latency"
+	case StreamReadInBytes:
+		return "read_in_bytes"
+	case StreamReadInBatches:
+		return "read_in_batches"
+	case StreamReadLatency:
+		return "read_latency"
 	case SubSendOutBytes:
 		return "send_out_bytes"
 	case SubSendOutRecords:
@@ -85,7 +94,7 @@ func (s StatType) String() string {
 	return ""
 }
 
-// NOTE: StreamAppendLatency doesn't have a hstream.StatType
+// NOTE: StreamAppendLatency and StreamReadLatency doesn't have a hstream.StatType
 func (s StatType) ToHStreamStatType() hstream.StatType {
 	switch s {
 	case StreamAppendInBytes:
@@ -96,6 +105,10 @@ func (s StatType) ToHStreamStatType() hstream.StatType {
 		return hstream.StreamAppendTotal
 	case StreamAppendFailed:
 		return hstream.StreamAppendFailed
+	case StreamReadInBytes:
+		return hstream.StreamReadInBytes
+	case StreamReadInBatches:
+		return hstream.StreamReadInBatches
 	case SubSendOutBytes:
 		return hstream.SubSendOutBytes
 	case SubSendOutRecords:

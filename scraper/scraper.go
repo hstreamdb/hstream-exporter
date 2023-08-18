@@ -25,6 +25,7 @@ type Scrape interface {
 
 var summaryMetricSet = map[StatType]struct{}{
 	StreamAppendLatency: {},
+	StreamReadLatency:   {},
 }
 
 type Scraper struct {
@@ -147,6 +148,8 @@ func getSummaryStatsCmd(stat StatType) string {
 	switch stat {
 	case StreamAppendLatency:
 		return fmt.Sprintf(getStatsCmd, "server_histogram", "append_request_latency", summaryStatInterval)
+	case StreamReadLatency:
+		return fmt.Sprintf(getStatsCmd, "server_histogram", "read_latency", summaryStatInterval)
 	}
 	util.Logger().Error("unsupported summary stat", zap.String("stat", stat.String()))
 	return ""
