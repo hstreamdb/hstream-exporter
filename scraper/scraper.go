@@ -82,7 +82,7 @@ func (s *Scraper) batchScrape(wg *sync.WaitGroup, target string, metrics map[hst
 				stat := st.(hstream.StatValue)
 				for k, v := range stat.Value {
 					switch stat.Type {
-					case hstream.SubCheckListSize:
+					case hstream.SubCheckListSize, hstream.ConnectorIsAlive:
 						ch <- prometheus.MustNewConstMetric(metrics[stat.Type], prometheus.GaugeValue, float64(v), k, addr)
 					default:
 						ch <- prometheus.MustNewConstMetric(metrics[stat.Type], prometheus.CounterValue, float64(v), k, addr)
