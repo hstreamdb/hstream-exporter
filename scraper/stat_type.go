@@ -34,6 +34,7 @@ const (
 
 	ConnectorDeliveredInRecords
 	ConnectorDeliveredInBytes
+	ConnectorIsAlive
 
 	QueryTotalInputRecords
 	QueryTotalOutputRecords
@@ -82,6 +83,8 @@ func (s StatType) String() string {
 		return "delivered_in_records"
 	case ConnectorDeliveredInBytes:
 		return "delivered_in_bytes"
+	case ConnectorIsAlive:
+		return "is_alive"
 	case QueryTotalInputRecords:
 		return "total_input_records"
 	case QueryTotalOutputRecords:
@@ -131,6 +134,8 @@ func (s StatType) ToHStreamStatType() hstream.StatType {
 		return hstream.ConnectorDeliveredInBytes
 	case ConnectorDeliveredInRecords:
 		return hstream.ConnectorDeliveredInRecords
+	case ConnectorIsAlive:
+		return hstream.ConnectorIsAlive
 	case QueryTotalInputRecords:
 		return hstream.QueryTotalInputRecords
 	case QueryTotalOutputRecords:

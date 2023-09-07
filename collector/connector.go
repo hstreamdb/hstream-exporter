@@ -30,7 +30,15 @@ func NewConnectorMetrics() *ConnectorMetrics {
 			[]string{"connector", "server_host"}, nil,
 		),
 	}
+	isAlives := scraper.Metrics{
+		Type: scraper.ConnectorIsAlive,
+		Metric: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, connectorSubsystem, scraper.ConnectorIsAlive.String()),
+			"Connector alive state",
+			[]string{"connector", "server_host"}, nil,
+		),
+	}
 	return &ConnectorMetrics{
-		Metrics: []scraper.Metrics{deliveredInBytes, deliveredInRecords},
+		Metrics: []scraper.Metrics{deliveredInBytes, deliveredInRecords, isAlives},
 	}
 }
