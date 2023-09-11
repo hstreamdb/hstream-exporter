@@ -51,7 +51,10 @@ func (s *Scraper) Scrape(target string, metrics []Metrics, ch chan<- prometheus.
 	failedScrapeRequest := atomic.Int32{}
 	wg := sync.WaitGroup{}
 	wg.Add(2)
-	s.batchScrape(&wg, target, batchedMetrics, &successScrapeRequest, &failedScrapeRequest, ch)
+	// only fetch connector alive state once
+	connectorAliveStatOnce := atomic.Bool{}
+	connectorAliveStatOnce.Store(false)
+	s.batchScrape(&wg, target, batchedMetrics, &successScrapeRequest, &failedScrapeRequest, &connectorAliveStatOnce, ch)
 	s.scrapeSummary(&wg, target, summaryMetrics, &successScrapeRequest, &failedScrapeRequest, ch)
 	wg.Wait()
 
@@ -59,11 +62,7 @@ func (s *Scraper) Scrape(target string, metrics []Metrics, ch chan<- prometheus.
 }
 
 func (s *Scraper) batchScrape(wg *sync.WaitGroup, target string, metrics map[hstream.StatType]*prometheus.Desc,
-	success *atomic.Int32, failed *atomic.Int32, ch chan<- prometheus.Metric) {
-	// only fetch connector alive state once
-	connectorAliveStatOnce := atomic.Bool{}
-	connectorAliveStatOnce.Store(false)
-
+	success *atomic.Int32, failed *atomic.Int32, connectorAliveStatOnce *atomic.Bool, ch chan<- prometheus.Metric) {
 	go func() {
 		defer wg.Done()
 		mc := make([]hstream.StatType, 0, len(metrics))
