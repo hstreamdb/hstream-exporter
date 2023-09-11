@@ -60,10 +60,17 @@ func (s *Scraper) Scrape(target string, metrics []Metrics, ch chan<- prometheus.
 
 func (s *Scraper) batchScrape(wg *sync.WaitGroup, target string, metrics map[hstream.StatType]*prometheus.Desc,
 	success *atomic.Int32, failed *atomic.Int32, ch chan<- prometheus.Metric) {
+	// only fetch connector alive state once
+	connectorAliveStatOnce := atomic.Bool{}
+	connectorAliveStatOnce.Store(false)
+
 	go func() {
 		defer wg.Done()
 		mc := make([]hstream.StatType, 0, len(metrics))
 		for k := range metrics {
+			if k == hstream.ConnectorIsAlive && !connectorAliveStatOnce.CompareAndSwap(false, true) {
+				continue
+			}
 			mc = append(mc, k)
 		}
 
