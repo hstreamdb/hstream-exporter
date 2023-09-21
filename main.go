@@ -17,6 +17,7 @@ import (
 var (
 	hServerAddr            = flag.String("addr", "hstream://127.0.0.1:6570", "HStream server addr")
 	listenAddr             = flag.String("listen-addr", ":9200", "Port on which to expose metrics")
+	clientCaPath           = flag.String("ca-path", "", "Path of client ca file")
 	disableExporterMetrics = flag.Bool("disable-exporter-metrics", false, "Exclude metrics about the exporter itself")
 	maxScrapeRequest       = flag.Int("max-request", 0, "Maximum number of parallel scrape requests. Use 0 to disable.")
 	// TODO: the prometheus scrap timeout must greater than hstream rpc request timeout(default 5s), add a validation
@@ -25,7 +26,7 @@ var (
 	getServerInfoDuration = flag.Int("get-server-info-duration", 30, "Get server info in second duration.")
 )
 
-func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int, timeout int) (http.Handler, error) {
+func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int, timeout int, caPath string) (http.Handler, error) {
 	exporterMetricsRegistry := prometheus.NewRegistry()
 	if includeExporterMetrics {
 		exporterMetricsRegistry.MustRegister(
@@ -35,7 +36,7 @@ func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int, 
 	}
 
 	registry := prometheus.NewRegistry()
-	exporter, err := collector.NewHStreamCollector(serverUrl, *getServerInfoDuration, registry)
+	exporter, err := collector.NewHStreamCollector(serverUrl, caPath, *getServerInfoDuration, registry)
 	if err != nil {
 		return nil, err
 	}
@@ -88,9 +89,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler, err := newHandler(*hServerAddr, !(*disableExporterMetrics), *maxScrapeRequest, *timeout)
+	handler, err := newHandler(*hServerAddr, !(*disableExporterMetrics), *maxScrapeRequest, *timeout, *clientCaPath)
 	if err != nil {
-		panic(fmt.Sprintf("create http handler err: %s", err.Error()))
+		panic(fmt.Sprintf("create handler err: %s", err.Error()))
 	}
 	http.Handle("/metrics", handler)
 	http.HandleFunc("/log_level", updateLogLevel)
