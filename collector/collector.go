@@ -2,15 +2,17 @@ package collector
 
 import (
 	"fmt"
+	"slices"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/hstreamdb/hstream-exporter/scraper"
 	"github.com/hstreamdb/hstream-exporter/util"
 	"github.com/hstreamdb/hstreamdb-go/hstream"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 const (
@@ -98,6 +100,8 @@ func NewHStreamCollector(serverUrl string, caPath string, duration int, registry
 		return nil, errors.WithMessage(err, "Create HStream client error")
 	}
 
+	client.SetLogLevel(zap.WarnLevel)
+
 	urls, err := client.GetServerInfo()
 	if err != nil {
 		return nil, errors.WithMessage(err, "Get server info error")
@@ -156,26 +160,48 @@ func (h *HStreamCollector) Collect(ch chan<- prometheus.Metric) {
 	for _, u := range h.TargetUrls {
 		go func(url string) {
 			defer wg.Done()
-			execute(h.scraper, metrics, url, ch)
+			h.execute(metrics, url, ch)
 		}(u)
 	}
 	h.lock.RUnlock()
 	wg.Wait()
 }
 
-func execute(scraper scraper.Scrape, metrics []scraper.Metrics, target string, ch chan<- prometheus.Metric) {
+func (h *HStreamCollector) execute(metrics []scraper.Metrics, target string, ch chan<- prometheus.Metric) {
 	start := time.Now()
-	success, faild := scraper.Scrape(target, metrics, ch)
+	success, faild := h.scraper.Scrape(target, metrics, ch)
 	diff := time.Now().Sub(start)
 	util.Logger().Debug("Scrape target done", zap.String("url", target),
 		zap.Int64("milliseconds latency", diff.Milliseconds()),
 		zap.Int32("success request", success),
 		zap.Int32("failed request", faild))
 
-	scrapeLatencyDesc.WithLabelValues(target).Observe(float64(diff.Milliseconds()))
 	totalSuccessedScrap.Add(uint64(success))
 	totalFailedScrap.Add(uint64(faild))
 
+	// only record latency when successed
+	if success != 0 && faild == 0 {
+		scrapeLatencyDesc.WithLabelValues(target).Observe(float64(diff.Milliseconds()))
+	}
+
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.CounterValue, float64(totalSuccessedScrap.Load()), target)
 	ch <- prometheus.MustNewConstMetric(scrapeFailedDesc, prometheus.CounterValue, float64(totalFailedScrap.Load()), target)
+
+	if faild != 0 {
+		util.Logger().Info("Scrape target failed, remove the url", zap.String("url", target))
+		h.lock.Lock()
+		defer h.lock.Unlock()
+
+		idx := slices.Index(h.TargetUrls, target)
+		if idx == -1 {
+			util.Logger().Warn("Try to remove url from url list, but not found",
+				zap.String("url", target), zap.String("url list", fmt.Sprintf("%v", h.TargetUrls)))
+			return
+		} else if h.TargetUrls[idx] != target {
+			util.Logger().Fatal("url should equal to TargetUrl[idx]",
+				zap.String("url", target), zap.Int("index", idx), zap.String("TargetUrl[idx]", h.TargetUrls[idx]))
+		} else {
+			h.TargetUrls = append(h.TargetUrls[:idx], h.TargetUrls[idx+1:]...)
+		}
+	}
 }

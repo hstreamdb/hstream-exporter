@@ -1,4 +1,4 @@
-FROM golang:1.19 as builder
+FROM golang:1.21 as builder
 
 COPY . /srv
 
@@ -11,6 +11,6 @@ RUN cd /srv && \
 
 # -----------------------------------------------------------------------------
 
-FROM ubuntu:focal
+FROM ubuntu:jammy
 
 COPY --from=builder /root/.local/bin/hstream-exporter /usr/local/bin/
