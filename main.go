@@ -3,15 +3,16 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/hstreamdb/hstream-exporter/collector"
 	"github.com/hstreamdb/hstream-exporter/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
-	"net/http"
-	"os"
-	"time"
 )
 
 var (
