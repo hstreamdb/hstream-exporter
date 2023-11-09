@@ -85,17 +85,22 @@ func (h *HStreamCollector) getServerInfo() {
 	}
 }
 
-func NewHStreamCollector(serverUrl string, caPath string, duration int, registry *prometheus.Registry) (*HStreamCollector, error) {
+func NewHStreamCollector(serverUrl string, caPath string, token string, duration int, registry *prometheus.Registry) (*HStreamCollector, error) {
 	var (
 		client *hstream.HStreamClient
 		err    error
 	)
 
-	if len(caPath) != 0 {
-		client, err = hstream.NewHStreamClient(serverUrl, hstream.WithCaCert(caPath))
-	} else {
-		client, err = hstream.NewHStreamClient(serverUrl)
+	authOpts := []hstream.AuthOpts{}
+	if len(token) != 0 {
+		authOpts = append(authOpts, hstream.WithAuthToken(token))
 	}
+	if len(caPath) != 0 {
+		authOpts = append(authOpts, hstream.WithCaCert(caPath))
+	}
+
+	client, err = hstream.NewHStreamClient(serverUrl, authOpts...)
+
 	if err != nil {
 		return nil, errors.WithMessage(err, "Create HStream client error")
 	}
