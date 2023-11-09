@@ -2,7 +2,7 @@ package collector
 
 import (
 	"fmt"
-	"slices"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -72,7 +72,7 @@ func (h *HStreamCollector) getServerInfo() {
 	util.Logger().Info("start get server info loop.", zap.String("duration", h.serverUpdateDuration.String()))
 
 	for range ticker.C {
-		urls, err := h.client.GetServerInfo()
+		urls, err := h.client.GetServerInfo(false)
 		if err != nil {
 			util.Logger().Error("get server info return error", zap.String("error", err.Error()))
 			continue
@@ -107,7 +107,7 @@ func NewHStreamCollector(serverUrl string, caPath string, token string, duration
 
 	client.SetLogLevel(zap.WarnLevel)
 
-	urls, err := client.GetServerInfo()
+	urls, err := client.GetServerInfo(false)
 	if err != nil {
 		return nil, errors.WithMessage(err, "Get server info error")
 	}
@@ -162,6 +162,7 @@ func (h *HStreamCollector) Collect(ch chan<- prometheus.Metric) {
 	metrics := h.getScrapedMetrics()
 	h.lock.RLock()
 	wg.Add(len(h.TargetUrls))
+	util.Logger().Debug("Start scrape targets", zap.String("urls", fmt.Sprintf("%v", h.TargetUrls)))
 	for _, u := range h.TargetUrls {
 		go func(url string) {
 			defer wg.Done()
@@ -170,6 +171,7 @@ func (h *HStreamCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 	h.lock.RUnlock()
 	wg.Wait()
+	util.Logger().Debug("=============== scrape done ======================")
 }
 
 func (h *HStreamCollector) execute(metrics []scraper.Metrics, target string, ch chan<- prometheus.Metric) {
@@ -193,20 +195,15 @@ func (h *HStreamCollector) execute(metrics []scraper.Metrics, target string, ch 
 	ch <- prometheus.MustNewConstMetric(scrapeFailedDesc, prometheus.CounterValue, float64(totalFailedScrap.Load()), target)
 
 	if faild != 0 {
-		util.Logger().Info("Scrape target failed, remove the url", zap.String("url", target))
+		info, err := h.client.GetServerInfo(true)
+		if err != nil {
+			util.Logger().Error("Can't get cluster server info, exit exporter", zap.String("error", err.Error()))
+			os.Exit(1)
+		}
 		h.lock.Lock()
 		defer h.lock.Unlock()
-
-		idx := slices.Index(h.TargetUrls, target)
-		if idx == -1 {
-			util.Logger().Warn("Try to remove url from url list, but not found",
-				zap.String("url", target), zap.String("url list", fmt.Sprintf("%v", h.TargetUrls)))
-			return
-		} else if h.TargetUrls[idx] != target {
-			util.Logger().Fatal("url should equal to TargetUrl[idx]",
-				zap.String("url", target), zap.Int("index", idx), zap.String("TargetUrl[idx]", h.TargetUrls[idx]))
-		} else {
-			h.TargetUrls = append(h.TargetUrls[:idx], h.TargetUrls[idx+1:]...)
-		}
+		h.TargetUrls = info
+		util.Logger().Info("Scrape target failed, update the url list", zap.String("target", target),
+			zap.String("urls", fmt.Sprintf("%v", h.TargetUrls)))
 	}
 }
