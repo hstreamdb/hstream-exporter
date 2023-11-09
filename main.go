@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"net/http"
@@ -25,9 +26,11 @@ var (
 	timeout               = flag.Int("timeout", 10, "Time out in seconds for each prometheus scrap request.")
 	logLevel              = flag.String("log-level", "info", "Exporter log level")
 	getServerInfoDuration = flag.Int("get-server-info-duration", 30, "Get server info in second duration.")
+	user                  = flag.String("user", "", "User for authentication")
+	password              = flag.String("password", "", "Password for authentication")
 )
 
-func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int, timeout int, caPath string) (http.Handler, error) {
+func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int, timeout int, caPath string, token string) (http.Handler, error) {
 	exporterMetricsRegistry := prometheus.NewRegistry()
 	if includeExporterMetrics {
 		exporterMetricsRegistry.MustRegister(
@@ -37,7 +40,7 @@ func newHandler(serverUrl string, includeExporterMetrics bool, maxRequests int, 
 	}
 
 	registry := prometheus.NewRegistry()
-	exporter, err := collector.NewHStreamCollector(serverUrl, caPath, *getServerInfoDuration, registry)
+	exporter, err := collector.NewHStreamCollector(serverUrl, caPath, token, *getServerInfoDuration, registry)
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +86,10 @@ func updateLogLevel(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func getToken(user, password string) string {
+	return base64.StdEncoding.EncodeToString([]byte(user + ":" + password))
+}
+
 func main() {
 	flag.Parse()
 	if err := util.InitLogger(*logLevel); err != nil {
@@ -90,7 +97,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler, err := newHandler(*hServerAddr, !(*disableExporterMetrics), *maxScrapeRequest, *timeout, *clientCaPath)
+	var token = ""
+	if len(*user) != 0 && len(*password) != 0 {
+		token = getToken(*user, *password)
+	}
+	handler, err := newHandler(*hServerAddr, !(*disableExporterMetrics), *maxScrapeRequest, *timeout, *clientCaPath, token)
 	if err != nil {
 		panic(fmt.Sprintf("create handler err: %s", err.Error()))
 	}
