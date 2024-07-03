@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	getStatsCmd         = "server stats %s %s -i %s"
-	summaryStatInterval = "5s"
+	getStatsCmd         = "server stats %s %s -i %s -p 0.5 -p 0.75 -p 0.90 -p 0.99"
+	summaryStatInterval = "1min"
 )
 
 type Scrape interface {
@@ -24,8 +24,12 @@ type Scrape interface {
 }
 
 var summaryMetricSet = map[StatType]struct{}{
-	StreamAppendLatency: {},
-	StreamReadLatency:   {},
+	StreamAppendLatency:      {},
+	StreamReadLatency:        {},
+	CacheStoreAppendLatency:  {},
+	CacheStoreReadLatency:    {},
+	CheckStoreClusterLatency: {},
+	CheckMetaClusterLatency:  {},
 }
 
 type Scraper struct {
@@ -76,7 +80,7 @@ func (s *Scraper) batchScrape(wg *sync.WaitGroup, target string, metrics map[hst
 		statsResult, err := s.client.GetStatsRequest(target, mc)
 		if err != nil {
 			util.Logger().Error("send batch stats request to HStream server error",
-				zap.String("target", target), zap.Error(err))
+				zap.String("target", target), zap.String("error", err.Error()))
 			failed.Add(1)
 			return
 		}
@@ -88,7 +92,9 @@ func (s *Scraper) batchScrape(wg *sync.WaitGroup, target string, metrics map[hst
 				stat := st.(hstream.StatValue)
 				for k, v := range stat.Value {
 					switch stat.Type {
-					case hstream.SubCheckListSize, hstream.ConnectorIsAlive:
+					case hstream.SubCheckListSize, hstream.ConnectorIsAlive,
+						hstream.CacheStoreAppendTotal, hstream.CacheStoreAppendFailed,
+						hstream.CacheStoreDeliveredTotal, hstream.CacheStoreDeliveredFailed:
 						ch <- prometheus.MustNewConstMetric(metrics[stat.Type], prometheus.GaugeValue, float64(v), k, addr)
 					default:
 						ch <- prometheus.MustNewConstMetric(metrics[stat.Type], prometheus.CounterValue, float64(v), k, addr)
@@ -126,7 +132,7 @@ func (s *Scraper) scrapeSummary(wg *sync.WaitGroup, target string, metrics map[S
 				failed.Add(1)
 				util.Logger().Error("send admin request to HStream server error",
 					zap.String("cmd", cmd),
-					zap.String("url", addr), zap.Error(err))
+					zap.String("url", addr), zap.String("error", err.Error()))
 				return
 			}
 
@@ -134,7 +140,7 @@ func (s *Scraper) scrapeSummary(wg *sync.WaitGroup, target string, metrics map[S
 			if err != nil {
 				failed.Add(1)
 				util.Logger().Error("decode admin request error", zap.String("cmd", cmd),
-					zap.String("url", addr), zap.Error(err))
+					zap.String("url", addr), zap.String("error", err.Error()))
 				return
 			}
 			table["server_host"] = addr
@@ -156,6 +162,14 @@ func getSummaryStatsCmd(stat StatType) string {
 		return fmt.Sprintf(getStatsCmd, "server_histogram", "append_request_latency", summaryStatInterval)
 	case StreamReadLatency:
 		return fmt.Sprintf(getStatsCmd, "server_histogram", "read_latency", summaryStatInterval)
+	case CacheStoreAppendLatency:
+		return fmt.Sprintf(getStatsCmd, "server_histogram", "append_cache_store_latency", summaryStatInterval)
+	case CacheStoreReadLatency:
+		return fmt.Sprintf(getStatsCmd, "server_histogram", "read_cache_store_latency", summaryStatInterval)
+	case CheckStoreClusterLatency:
+		return fmt.Sprintf(getStatsCmd, "server_histogram", "check_store_cluster_healthy_latency", summaryStatInterval)
+	case CheckMetaClusterLatency:
+		return fmt.Sprintf(getStatsCmd, "server_histogram", "check_meta_cluster_healthy_latency", summaryStatInterval)
 	}
 	util.Logger().Error("unsupported summary stat", zap.String("stat", stat.String()))
 	return ""
@@ -213,7 +227,7 @@ func handleSummary(metric *prometheus.Desc, metricType StatType, mp map[string]s
 	}
 
 	p50 := parse(mp["p50"])
-	p95 := parse(mp["p95"])
+	p90 := parse(mp["p90"])
 	p99 := parse(mp["p99"])
 	if err != nil {
 		return err
@@ -225,7 +239,7 @@ func handleSummary(metric *prometheus.Desc, metricType StatType, mp map[string]s
 	)
 
 	ch <- prometheus.MustNewConstSummary(metric, 0, 0,
-		map[float64]float64{0.5: p50, 0.95: p95, 0.99: p99}, mp["server_host"])
+		map[float64]float64{0.5: p50, 0.90: p90, 0.99: p99}, mp["server_host"])
 
 	return nil
 }

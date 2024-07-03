@@ -41,6 +41,21 @@ const (
 	QueryTotalExecuteErrors
 
 	ViewTotalExecuteQueries
+
+	CacheStoreAppendInBytes
+	CacheStoreAppendInReccords
+	CacheStoreAppendTotal
+	CacheStoreAppendFailed
+	CacheStoreAppendLatency
+	CacheStoreReadInBytes
+	CacheStoreReadInRecords
+	CacheStoreReadLatency
+	CacheStoreDeliveredInRecords
+	CacheStoreDeliveredTotal
+	CacheStoreDeliveredFailed
+
+	CheckMetaClusterLatency
+	CheckStoreClusterLatency
 )
 
 func (s StatType) String() string {
@@ -93,6 +108,32 @@ func (s StatType) String() string {
 		return "total_execute_errors"
 	case ViewTotalExecuteQueries:
 		return "total_execute_queries"
+	case CacheStoreAppendInBytes:
+		return "append_in_bytes"
+	case CacheStoreAppendInReccords:
+		return "append_in_records"
+	case CacheStoreAppendTotal:
+		return "append_total"
+	case CacheStoreAppendFailed:
+		return "append_failed"
+	case CacheStoreAppendLatency:
+		return "append_latency"
+	case CacheStoreReadInBytes:
+		return "read_in_bytes"
+	case CacheStoreReadInRecords:
+		return "read_in_records"
+	case CacheStoreReadLatency:
+		return "read_latency"
+	case CacheStoreDeliveredInRecords:
+		return "delivered_in_records"
+	case CacheStoreDeliveredTotal:
+		return "delivered_total"
+	case CacheStoreDeliveredFailed:
+		return "delivered_failed"
+	case CheckStoreClusterLatency:
+		return "check_store_cluster_latency"
+	case CheckMetaClusterLatency:
+		return "check_meta_cluster_latency"
 	}
 	return ""
 }
@@ -144,6 +185,24 @@ func (s StatType) ToHStreamStatType() hstream.StatType {
 		return hstream.QueryTotalExcuteErrors
 	case ViewTotalExecuteQueries:
 		return hstream.ViewTotalExecuteQueries
+	case CacheStoreAppendInBytes:
+		return hstream.CacheStoreAppendInBytes
+	case CacheStoreAppendInReccords:
+		return hstream.CacheStoreAppendInRecords
+	case CacheStoreAppendTotal:
+		return hstream.CacheStoreAppendTotal
+	case CacheStoreAppendFailed:
+		return hstream.CacheStoreAppendFailed
+	case CacheStoreReadInBytes:
+		return hstream.CacheStoreReadInBytes
+	case CacheStoreReadInRecords:
+		return hstream.CacheStoreReadInRecords
+	case CacheStoreDeliveredInRecords:
+		return hstream.CacheStoreDeliveredInRecords
+	case CacheStoreDeliveredTotal:
+		return hstream.CacheStoreDeliveredTotal
+	case CacheStoreDeliveredFailed:
+		return hstream.CacheStoreDeliveredFailed
 	}
 	return nil
 }

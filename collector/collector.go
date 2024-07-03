@@ -47,13 +47,15 @@ var (
 
 // HStreamCollector implements the prometheus.Collector interface
 type HStreamCollector struct {
-	StreamMetrics        *StreamMetrics
-	SubMetrics           *SubscriptionMetrics
-	ConnMetrics          *ConnectorMetrics
-	QueryMetrics         *QueryMetrics
-	ViewMetrics          *ViewMetrics
-	scraper              scraper.Scrape
-	serverUpdateDuration time.Duration
+	StreamMetrics         *StreamMetrics
+	SubMetrics            *SubscriptionMetrics
+	ConnMetrics           *ConnectorMetrics
+	QueryMetrics          *QueryMetrics
+	ViewMetrics           *ViewMetrics
+	CacheStoreMetrics     *CacheStoreMetrics
+	HealthyCheckerMetrics *HealthyCheckerMetrics
+	scraper               scraper.Scrape
+	serverUpdateDuration  time.Duration
 
 	client *hstream.HStreamClient
 
@@ -115,15 +117,17 @@ func NewHStreamCollector(serverUrl string, caPath string, token string, duration
 	util.Logger().Info("Get server urls", zap.String("urls", fmt.Sprintf("%v", urls)))
 	registry.MustRegister(scrapeLatencyDesc)
 	collector := &HStreamCollector{
-		TargetUrls:           urls,
-		StreamMetrics:        NewStreamMetrics(),
-		SubMetrics:           NewSubscriptionMetrics(),
-		ConnMetrics:          NewConnectorMetrics(),
-		QueryMetrics:         NewQueryMetrics(),
-		ViewMetrics:          NewViewMetrics(),
-		scraper:              scraper.NewScraper(client),
-		serverUpdateDuration: time.Duration(duration) * time.Second,
-		client:               client,
+		TargetUrls:            urls,
+		StreamMetrics:         NewStreamMetrics(),
+		SubMetrics:            NewSubscriptionMetrics(),
+		ConnMetrics:           NewConnectorMetrics(),
+		QueryMetrics:          NewQueryMetrics(),
+		ViewMetrics:           NewViewMetrics(),
+		CacheStoreMetrics:     NewCacheStoreMetrics(),
+		HealthyCheckerMetrics: NewHealthyCheckerMetrics(),
+		scraper:               scraper.NewScraper(client),
+		serverUpdateDuration:  time.Duration(duration) * time.Second,
+		client:                client,
 	}
 	go collector.getServerInfo()
 
@@ -145,6 +149,12 @@ func (h *HStreamCollector) getScrapedMetrics() []scraper.Metrics {
 		metrics = append(metrics, m)
 	}
 	for _, m := range h.ViewMetrics.Metrics {
+		metrics = append(metrics, m)
+	}
+	for _, m := range h.CacheStoreMetrics.Metrics {
+		metrics = append(metrics, m)
+	}
+	for _, m := range h.HealthyCheckerMetrics.Metrics {
 		metrics = append(metrics, m)
 	}
 	return metrics
