@@ -50,7 +50,7 @@ func NewStreamMetrics() *StreamMetrics {
 		Type: scraper.StreamAppendLatency,
 		Metric: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, streamSubsystem, scraper.StreamAppendLatency.String()),
-			"Append request latency.",
+			"Append stream latency.",
 			[]string{"server_host"}, nil,
 		),
 	}

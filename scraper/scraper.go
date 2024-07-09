@@ -159,7 +159,7 @@ func (s *Scraper) scrapeSummary(wg *sync.WaitGroup, target string, metrics map[S
 func getSummaryStatsCmd(stat StatType) string {
 	switch stat {
 	case StreamAppendLatency:
-		return fmt.Sprintf(getStatsCmd, "server_histogram", "append_request_latency", summaryStatInterval)
+		return fmt.Sprintf(getStatsCmd, "server_histogram", "append_latency", summaryStatInterval)
 	case StreamReadLatency:
 		return fmt.Sprintf(getStatsCmd, "server_histogram", "read_latency", summaryStatInterval)
 	case CacheStoreAppendLatency:
